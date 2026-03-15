@@ -2,12 +2,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import ShareExport from "@/components/ShareExport";
 import {
   ArrowRight,
   Heart,
-  Share2,
-  Printer,
-  Mail,
   ExternalLink,
   ImageIcon,
   X,
