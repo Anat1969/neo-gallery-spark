@@ -2,7 +2,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ImageIcon } from "lucide-react";
+import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { useEditMode } from "@/contexts/EditModeContext";
 
 interface Artwork {
   id: string;
