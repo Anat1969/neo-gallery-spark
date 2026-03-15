@@ -80,21 +80,6 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
 
   const artwork = MOCK_ARTWORKS[id ?? ""] ?? DEFAULT_ARTWORK;
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: artwork.title, url: window.location.href });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-    }
-  };
-
-  const handlePrint = () => window.print();
-
-  const handleEmail = () => {
-    const subject = encodeURIComponent(artwork.title);
-    const body = encodeURIComponent(`${artwork.title}\n\n${artwork.post}\n\n${window.location.href}`);
-    window.open(`mailto:?subject=${subject}&body=${body}`);
-  };
 
   const content = (
     <div className="min-h-screen bg-background">
