@@ -1,4 +1,5 @@
 import { useEditMode } from "@/contexts/EditModeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Pencil, Eye } from "lucide-react";
 import {
   Tooltip,
@@ -8,6 +9,9 @@ import {
 
 const EditModeToggle = () => {
   const { isEditMode, toggleEditMode } = useEditMode();
+  const { isAdmin } = useAuth();
+
+  if (!isAdmin) return null;
 
   return (
     <Tooltip>
