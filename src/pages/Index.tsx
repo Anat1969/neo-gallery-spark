@@ -1,9 +1,5 @@
-const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <h1 className="text-4xl font-bold text-primary">גלריות</h1>
-    </div>
-  );
-};
+import GalleryGrid from "@/components/GalleryGrid";
+
+const Index = () => <GalleryGrid />;
 
 export default Index;
