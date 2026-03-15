@@ -77,6 +77,7 @@ interface ArtworkCardProps {
 const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isEditMode } = useEditMode();
   const [state] = useState<ArtworkState>("loaded");
   const [isFavorited, setIsFavorited] = useState(false);
 
