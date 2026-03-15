@@ -25,6 +25,7 @@ const App = () => (
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/favorites" element={<FavoritesBoard />} />
           <Route path="/artwork/:id" element={<ArtworkPage />} />
+          <Route path="/search" element={<SearchPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
