@@ -51,6 +51,7 @@ type RoomState = "loading" | "error" | "empty" | "loaded";
 const GalleryRoom = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isEditMode } = useEditMode();
   const [state] = useState<RoomState>("loaded");
 
   const gallery = MOCK_GALLERIES[id ?? ""] ?? DEFAULT_GALLERY;
