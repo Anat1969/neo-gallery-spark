@@ -2,12 +2,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import ShareExport from "@/components/ShareExport";
 import {
   ArrowRight,
   Heart,
-  Share2,
-  Printer,
-  Mail,
   ExternalLink,
   ImageIcon,
   X,
@@ -82,21 +80,6 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
 
   const artwork = MOCK_ARTWORKS[id ?? ""] ?? DEFAULT_ARTWORK;
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: artwork.title, url: window.location.href });
-    } else {
-      await navigator.clipboard.writeText(window.location.href);
-    }
-  };
-
-  const handlePrint = () => window.print();
-
-  const handleEmail = () => {
-    const subject = encodeURIComponent(artwork.title);
-    const body = encodeURIComponent(`${artwork.title}\n\n${artwork.post}\n\n${window.location.href}`);
-    window.open(`mailto:?subject=${subject}&body=${body}`);
-  };
 
   const content = (
     <div className="min-h-screen bg-background">
@@ -220,39 +203,28 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             )}
 
             {/* Action buttons */}
-            <div className="mt-8 flex flex-wrap gap-2 border-t border-border pt-6">
-              <Button
-                variant="ghost"
-                onClick={() => setIsFavorited(!isFavorited)}
-                className={`gap-2 ${isFavorited ? "text-primary" : "text-muted-foreground"} hover:text-primary`}
-              >
-                <Heart className={`h-4 w-4 ${isFavorited ? "fill-primary" : ""}`} />
-                שמור למועדפים
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleShare}
-                className="gap-2 text-muted-foreground hover:text-primary"
-              >
-                <Share2 className="h-4 w-4" />
-                שתפי
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handlePrint}
-                className="gap-2 text-muted-foreground hover:text-primary"
-              >
-                <Printer className="h-4 w-4" />
-                הדפיסי
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={handleEmail}
-                className="gap-2 text-muted-foreground hover:text-primary"
-              >
-                <Mail className="h-4 w-4" />
-                שלחי
-              </Button>
+            <div className="mt-8 border-t border-border pt-6">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsFavorited(!isFavorited)}
+                  className={`gap-2 border-muted-foreground/40 ${isFavorited ? "text-primary border-primary" : "text-muted-foreground"} hover:border-primary hover:text-primary`}
+                >
+                  <Heart className={`h-4 w-4 ${isFavorited ? "fill-primary" : ""}`} />
+                  שמור למועדפים
+                </Button>
+                <ShareExport
+                  title={artwork.title}
+                  topic={artwork.topic}
+                  post={artwork.post}
+                  tags={artwork.tags}
+                  imageUrl={artwork.image}
+                  style={artwork.style}
+                  concept={artwork.concept}
+                  year={artwork.year}
+                  inspirationUrl={artwork.inspirationUrl}
+                />
+              </div>
             </div>
           </div>
         </div>
