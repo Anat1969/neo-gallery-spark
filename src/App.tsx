@@ -23,6 +23,7 @@ const App = () => (
           <Route path="/gallery/:id" element={<GalleryRoom />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/favorites" element={<FavoritesBoard />} />
+          <Route path="/artwork/:id" element={<ArtworkPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
