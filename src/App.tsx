@@ -7,6 +7,7 @@ import Index from "./pages/Index.tsx";
 import GalleryRoom from "./pages/GalleryRoom.tsx";
 import AdminPanel from "./pages/AdminPanel.tsx";
 import FavoritesBoard from "./pages/FavoritesBoard.tsx";
+import ArtworkPage from "./pages/ArtworkPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/gallery/:id" element={<GalleryRoom />} />
           <Route path="/admin" element={<AdminPanel />} />
           <Route path="/favorites" element={<FavoritesBoard />} />
+          <Route path="/artwork/:id" element={<ArtworkPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
