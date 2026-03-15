@@ -3,12 +3,14 @@ import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import ShareExport from "@/components/ShareExport";
+import { useEditMode } from "@/contexts/EditModeContext";
 import {
   ArrowRight,
   Heart,
   ExternalLink,
   ImageIcon,
   X,
+  Pencil,
 } from "lucide-react";
 
 interface ArtworkData {
@@ -75,6 +77,7 @@ interface ArtworkCardProps {
 const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isEditMode } = useEditMode();
   const [state] = useState<ArtworkState>("loaded");
   const [isFavorited, setIsFavorited] = useState(false);
 
@@ -100,6 +103,12 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
           >
             <ArrowRight className="h-4 w-4" />
             חזרה
+          </Button>
+        )}
+        {isEditMode && (
+          <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/10">
+            <Pencil className="h-4 w-4" />
+            עריכה
           </Button>
         )}
       </div>

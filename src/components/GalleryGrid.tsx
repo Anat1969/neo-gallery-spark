@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
+import { useEditMode } from "@/contexts/EditModeContext";
 
 interface Gallery {
   id: string;
@@ -40,6 +41,7 @@ type GalleryGridState = "loading" | "error" | "empty" | "loaded";
 
 const GalleryGrid = () => {
   const navigate = useNavigate();
+  const { isEditMode } = useEditMode();
   const [activeCategory, setActiveCategory] = useState<string>("הכל");
 
   // Simulate state — swap to test: "loading" | "error" | "empty" | "loaded"
@@ -104,31 +106,59 @@ const GalleryGrid = () => {
 
       {/* Loaded */}
       {state === "loaded" && (
-        <div className="art-grid">
-          {filtered.map((gallery) => (
-            <button
-              key={gallery.id}
-              onClick={() => navigate(`/gallery/${gallery.slug}`)}
-              className="group overflow-hidden rounded-lg border border-border bg-card text-right transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
-            >
-              <div className="relative aspect-[4/3] overflow-hidden">
-                <img
-                  src={gallery.coverImage}
-                  alt={gallery.name}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                />
-                <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-                  {gallery.category}
-                </span>
-              </div>
-              <div className="p-4">
-                <h3 className="text-base font-semibold text-foreground">{gallery.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{gallery.artworkCount} עבודות</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          {isEditMode && (
+            <div className="mb-4 flex justify-end">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                גלריה חדשה
+              </Button>
+            </div>
+          )}
+          <div className="art-grid">
+            {filtered.map((gallery) => (
+              <button
+                key={gallery.id}
+                onClick={() => navigate(`/gallery/${gallery.slug}`)}
+                className="group relative overflow-hidden rounded-lg border border-border bg-card text-right transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
+              >
+                {isEditMode && (
+                  <div className="absolute right-2 top-2 z-10 flex gap-1">
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </span>
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                )}
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <img
+                    src={gallery.coverImage}
+                    alt={gallery.name}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                  />
+                  <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                    {gallery.category}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h3 className="text-base font-semibold text-foreground">{gallery.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{gallery.artworkCount} עבודות</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
