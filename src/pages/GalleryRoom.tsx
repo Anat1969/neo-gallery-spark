@@ -124,28 +124,59 @@ const GalleryRoom = () => {
 
       {/* Artwork Grid */}
       {state === "loaded" && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {gallery.artworks.map((artwork) => (
-            <button
-              key={artwork.id}
-              onClick={() => navigate(`/artwork/${artwork.id}`)}
-              className="group overflow-hidden rounded-lg border border-border bg-card text-right transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(76_90%_61%/0.1)]"
-            >
-              <div className="relative aspect-square overflow-hidden">
-                <img
-                  src={artwork.image}
-                  alt={artwork.title}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="text-base font-semibold text-foreground">{artwork.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <>
+          {isEditMode && (
+            <div className="mb-4 flex justify-end">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                יצירה חדשה
+              </Button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {gallery.artworks.map((artwork) => (
+              <button
+                key={artwork.id}
+                onClick={() => navigate(`/artwork/${artwork.id}`)}
+                className="group relative overflow-hidden rounded-lg border border-border bg-card text-right transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(76_90%_61%/0.1)]"
+              >
+                {isEditMode && (
+                  <div className="absolute right-2 top-2 z-10 flex gap-1">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm cursor-grab">
+                      <GripVertical className="h-3.5 w-3.5" />
+                    </span>
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </span>
+                    <span
+                      role="button"
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                )}
+                <div className="relative aspect-square overflow-hidden">
+                  <img
+                    src={artwork.image}
+                    alt={artwork.title}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="text-base font-semibold text-foreground">{artwork.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );

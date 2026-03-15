@@ -105,6 +105,12 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             חזרה
           </Button>
         )}
+        {isEditMode && (
+          <Button variant="outline" className="gap-2 border-primary text-primary hover:bg-primary/10">
+            <Pencil className="h-4 w-4" />
+            עריכה
+          </Button>
+        )}
       </div>
 
       {/* Loading */}
