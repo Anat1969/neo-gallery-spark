@@ -41,6 +41,7 @@ type GalleryGridState = "loading" | "error" | "empty" | "loaded";
 
 const GalleryGrid = () => {
   const navigate = useNavigate();
+  const { isEditMode } = useEditMode();
   const [activeCategory, setActiveCategory] = useState<string>("הכל");
 
   // Simulate state — swap to test: "loading" | "error" | "empty" | "loaded"
