@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ImageIcon } from "lucide-react";
+import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
+import { useEditMode } from "@/contexts/EditModeContext";
 
 interface Gallery {
   id: string;
