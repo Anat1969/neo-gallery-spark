@@ -69,7 +69,7 @@ interface Artwork {
   galleryName: string;
 }
 
-const CATEGORIES = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
+const CATEGORIES_FALLBACK = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
 
 const slugify = (text: string) =>
   text
