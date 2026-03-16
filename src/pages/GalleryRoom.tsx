@@ -120,19 +120,28 @@ const GalleryRoom = () => {
       setDragIdx(null);
       return;
     }
+
     const reordered = [...artworks];
     const [moved] = reordered.splice(dragIdx, 1);
     reordered.splice(dropIdx, 0, moved);
 
-    // Optimistic update via query client
     queryClient.setQueryData(["artworks", gallery?.id], reordered);
     setDragIdx(null);
 
-    // Persist new sort_order
     const updates = reordered.map((a, i) => ({ id: a.id, sort_order: i }));
-    for (const u of updates) {
-      await supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id);
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id),
+      ),
+    );
+
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) {
+      toast({ title: "שגיאה", description: firstError.message, variant: "destructive" });
+    } else {
+      toast({ title: "סדר היצירות עודכן" });
     }
+
     refresh();
   };
 
