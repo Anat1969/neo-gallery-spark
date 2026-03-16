@@ -51,18 +51,18 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
     enabled: !!id,
   });
 
-  const { data: favoriteRow } = useQuery({
+  const { data: favoriteRow } = useQuery<{ id: string } | null>({
     queryKey: ["favorite", id, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("favorites" as any)
+      const favoritesQuery = supabase.from("favorites" as any) as any;
+      const { data, error } = await favoritesQuery
         .select("id")
         .eq("user_id", user!.id)
         .eq("artwork_id", id!)
         .maybeSingle();
 
       if (error) throw error;
-      return data as { id: string } | null;
+      return (data ?? null) as { id: string } | null;
     },
     enabled: !!id && !!user,
   });
