@@ -199,7 +199,7 @@ const GalleryRoom = () => {
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
             <ImageIcon className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-lg text-muted-foreground">הגלריה ריקה — יצירות יתווספו בקרוב</p>
+          <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
           {isEditMode && (
             <Button onClick={handleAdd} className="gap-2">
               <Plus className="h-4 w-4" />
