@@ -178,6 +178,60 @@ const AdminPanel = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-galleries"] });
     queryClient.invalidateQueries({ queryKey: ["admin-artworks"] });
     queryClient.invalidateQueries({ queryKey: ["galleries"] });
+    queryClient.invalidateQueries({ queryKey: ["categories"] });
+  };
+
+  // --- Category CRUD ---
+  const openNewCategory = () => {
+    setEditingCat(null);
+    setCatName("");
+    setCatDialogOpen(true);
+  };
+
+  const openEditCategory = (cat: { id: string; name: string; sort_order: number }) => {
+    setEditingCat(cat);
+    setCatName(cat.name);
+    setCatDialogOpen(true);
+  };
+
+  const saveCategory = async () => {
+    if (!catName.trim()) {
+      toast({ title: "שגיאה", description: "שם הקטגוריה הוא שדה חובה", variant: "destructive" });
+      return;
+    }
+
+    try {
+      if (editingCat) {
+        const { error } = await supabase
+          .from("categories")
+          .update({ name: catName.trim() })
+          .eq("id", editingCat.id);
+        if (error) throw error;
+        toast({ title: "הקטגוריה עודכנה" });
+      } else {
+        const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map((c) => c.sort_order)) + 1 : 0;
+        const { error } = await supabase
+          .from("categories")
+          .insert({ name: catName.trim(), sort_order: maxOrder });
+        if (error) throw error;
+        toast({ title: "הקטגוריה נוצרה" });
+      }
+      setCatDialogOpen(false);
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "הקטגוריה נמחקה" });
+    setDeleteCatTarget(null);
+    refresh();
   };
 
   const openNewGallery = () => {
