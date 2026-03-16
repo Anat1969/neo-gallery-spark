@@ -322,7 +322,7 @@ const GalleryRoom = () => {
               </div>
             ))}
           </div>
-        </>
+        </section>
       )}
 
       {/* Artwork Form Dialog */}
