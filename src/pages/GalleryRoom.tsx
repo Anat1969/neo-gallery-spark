@@ -183,7 +183,19 @@ const GalleryRoom = () => {
       {!isLoading && gallery && (
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-foreground md:text-4xl">{gallery.name}</h1>
+            <InlineEdit
+              value={gallery.name}
+              enabled={isEditMode}
+              as="h1"
+              className="text-3xl font-bold text-foreground md:text-4xl"
+              inputClassName="text-3xl font-bold md:text-4xl"
+              onSave={async (newName) => {
+                const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                queryClient.invalidateQueries({ queryKey: ["gallery", slug] });
+                toast({ title: "שם הגלריה עודכן" });
+              }}
+            />
             <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
               {gallery.category}
             </span>
