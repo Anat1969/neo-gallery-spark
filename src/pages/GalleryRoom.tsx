@@ -364,11 +364,31 @@ const GalleryRoom = () => {
             {isEditMode && (
               <div
                 onClick={handleAddInline}
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-primary", "text-primary"); }}
+                onDragLeave={(e) => { e.currentTarget.classList.remove("border-primary", "text-primary"); }}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  e.currentTarget.classList.remove("border-primary", "text-primary");
+                  if (!gallery) return;
+                  const file = e.dataTransfer.files?.[0];
+                  if (!file?.type.startsWith("image/")) { handleAddInline(); return; }
+                  const nextOrder = artworks.length > 0 ? Math.max(...artworks.map(a => a.sort_order)) + 1 : 0;
+                  const ext = file.name.split(".").pop() ?? "png";
+                  const path = `artworks/${crypto.randomUUID()}.${ext}`;
+                  const { error: uploadErr } = await supabase.storage.from("artwork-images").upload(path, file);
+                  if (uploadErr) { toast({ title: "שגיאה", description: uploadErr.message, variant: "destructive" }); return; }
+                  const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
+                  const { error } = await supabase.from("artworks").insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder, image_url: urlData.publicUrl }).select().single();
+                  if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                  refresh();
+                  toast({ title: "יצירה נוספה עם תמונה" });
+                }}
                 className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
                 style={{ minHeight: "280px" }}
               >
+                <Upload className="h-8 w-8" />
                 <Plus className="h-10 w-10" />
-                <span className="text-sm font-medium">הוסיפי יצירה</span>
+                <span className="text-sm font-medium">הוסיפי יצירה או גררי תמונה</span>
               </div>
             )}
           </div>
