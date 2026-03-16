@@ -18,6 +18,7 @@ import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload } fro
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
+import PageBreadcrumb from "@/components/PageBreadcrumb";
 
 const GalleryRoom = () => {
   const { id: slug } = useParams<{ id: string }>();
@@ -147,15 +148,13 @@ const GalleryRoom = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/")}
-        className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
-      >
-        <ArrowRight className="h-4 w-4" />
-        חזרה לגלריות
-      </Button>
+      {/* Breadcrumb */}
+      <PageBreadcrumb crumbs={[
+        { label: "גלריות", to: "/" },
+        { label: gallery?.name ?? "..." },
+      ]} />
+
+      <div className="mt-4" />
 
       {/* Loading */}
       {isLoading && (
@@ -209,17 +208,18 @@ const GalleryRoom = () => {
         </div>
       )}
 
-      {/* Artwork Grid */}
+      {/* Section: Artworks */}
       {!isLoading && gallery && artworks.length > 0 && (
-        <>
-          {isEditMode && (
-            <div className="mb-4 flex justify-end">
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">עבודות</h2>
+            {isEditMode && (
               <Button onClick={handleAdd} className="gap-2">
                 <Plus className="h-4 w-4" />
                 יצירה חדשה
               </Button>
-            </div>
-          )}
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {artworks.map((artwork, idx) => (
               <div
@@ -322,7 +322,7 @@ const GalleryRoom = () => {
               </div>
             ))}
           </div>
-        </>
+        </section>
       )}
 
       {/* Artwork Form Dialog */}

@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import ShareExport from "@/components/ShareExport";
+import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -121,14 +122,11 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             <X className="h-5 w-5" />
           </button>
         ) : (
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-          >
-            <ArrowRight className="h-4 w-4" />
-            חזרה
-          </Button>
+          <PageBreadcrumb crumbs={[
+            { label: "גלריות", to: "/" },
+            ...(artwork?.gallery ? [{ label: (artwork.gallery as any).name, to: `/gallery/${(artwork.gallery as any).slug}` }] : []),
+            { label: artwork?.title ?? "..." },
+          ]} />
         )}
 
         {isEditMode && artwork?.gallery?.slug && (
