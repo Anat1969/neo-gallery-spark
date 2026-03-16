@@ -124,26 +124,6 @@ const ArtworkFormDialog = ({
   const removeTag = (tag: string) =>
     set("tags", form.tags.filter((t) => t !== tag));
 
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${selectedGalleryId || galleryId}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from("artwork-images")
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      toast({ title: "שגיאה בהעלאת תמונה", description: error.message, variant: "destructive" });
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
-    set("image_url", urlData.publicUrl);
-    setUploading(false);
-  };
 
   const handleSave = async () => {
     if (!form.title.trim()) {
