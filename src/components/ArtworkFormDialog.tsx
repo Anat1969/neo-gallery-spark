@@ -69,8 +69,6 @@ const ArtworkFormDialog = ({
   const [selectedGalleryId, setSelectedGalleryId] = useState(galleryId);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!artwork?.id;
 
