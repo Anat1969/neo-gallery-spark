@@ -357,6 +357,17 @@ const GalleryRoom = () => {
                 </div>
               </div>
             ))}
+            {/* Inline add card */}
+            {isEditMode && (
+              <div
+                onClick={handleAddInline}
+                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
+                style={{ minHeight: "280px" }}
+              >
+                <Plus className="h-10 w-10" />
+                <span className="text-sm font-medium">הוסיפי יצירה</span>
+              </div>
+            )}
           </div>
         </section>
       )}
