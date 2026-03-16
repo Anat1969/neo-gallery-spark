@@ -203,7 +203,7 @@ const GalleryGrid = () => {
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
       <div className="mb-8 flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
+        {["הכל", ...categories.map((c) => c.name)].map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
