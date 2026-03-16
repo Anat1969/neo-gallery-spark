@@ -35,19 +35,7 @@ import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
-const CATEGORIES = [
-  "הכל",
-  "אופנה",
-  "פנים",
-  "אדריכלות",
-  "כלים",
-  "אומנות",
-  "פיסול",
-  "צילום",
-] as const;
-
-type Category = (typeof CATEGORIES)[number];
+import { useCategories } from "@/hooks/useCategories";
 
 interface GalleryItem {
   id: string;
