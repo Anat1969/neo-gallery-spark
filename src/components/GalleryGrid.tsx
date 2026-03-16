@@ -35,19 +35,7 @@ import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-
-const CATEGORIES = [
-  "הכל",
-  "אופנה",
-  "פנים",
-  "אדריכלות",
-  "כלים",
-  "אומנות",
-  "פיסול",
-  "צילום",
-] as const;
-
-type Category = (typeof CATEGORIES)[number];
+import { useCategories } from "@/hooks/useCategories";
 
 interface GalleryItem {
   id: string;
@@ -74,7 +62,8 @@ const GalleryGrid = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [activeCategory, setActiveCategory] = useState<Category>("הכל");
+  const { data: categories = [] } = useCategories();
+  const [activeCategory, setActiveCategory] = useState("הכל");
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingGallery, setEditingGallery] = useState<GalleryItem | null>(null);
@@ -214,7 +203,7 @@ const GalleryGrid = () => {
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
       <div className="mb-8 flex flex-wrap gap-2">
-        {CATEGORIES.map((cat) => (
+        {["הכל", ...categories.map((c) => c.name)].map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -370,10 +359,10 @@ const GalleryGrid = () => {
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.filter((c) => c !== "הכל").map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+              <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

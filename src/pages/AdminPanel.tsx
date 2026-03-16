@@ -41,6 +41,7 @@ import {
   X,
   ArrowRight,
 } from "lucide-react";
+import { useCategories } from "@/hooks/useCategories";
 
 interface Gallery {
   id: string;
@@ -68,7 +69,7 @@ interface Artwork {
   galleryName: string;
 }
 
-const CATEGORIES = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
+const CATEGORIES_FALLBACK = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
 
 const slugify = (text: string) =>
   text
@@ -82,6 +83,14 @@ const AdminPanel = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories();
+  const categoryNames = categoriesData.length > 0 ? categoriesData.map((c) => c.name) : CATEGORIES_FALLBACK;
+
+  // Category CRUD state
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState<{ id: string; name: string; sort_order: number } | null>(null);
+  const [catName, setCatName] = useState("");
+  const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
     queryKey: ["admin-galleries"],
@@ -170,6 +179,60 @@ const AdminPanel = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-galleries"] });
     queryClient.invalidateQueries({ queryKey: ["admin-artworks"] });
     queryClient.invalidateQueries({ queryKey: ["galleries"] });
+    queryClient.invalidateQueries({ queryKey: ["categories"] });
+  };
+
+  // --- Category CRUD ---
+  const openNewCategory = () => {
+    setEditingCat(null);
+    setCatName("");
+    setCatDialogOpen(true);
+  };
+
+  const openEditCategory = (cat: { id: string; name: string; sort_order: number }) => {
+    setEditingCat(cat);
+    setCatName(cat.name);
+    setCatDialogOpen(true);
+  };
+
+  const saveCategory = async () => {
+    if (!catName.trim()) {
+      toast({ title: "שגיאה", description: "שם הקטגוריה הוא שדה חובה", variant: "destructive" });
+      return;
+    }
+
+    try {
+      if (editingCat) {
+        const { error } = await supabase
+          .from("categories")
+          .update({ name: catName.trim() })
+          .eq("id", editingCat.id);
+        if (error) throw error;
+        toast({ title: "הקטגוריה עודכנה" });
+      } else {
+        const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map((c) => c.sort_order)) + 1 : 0;
+        const { error } = await supabase
+          .from("categories")
+          .insert({ name: catName.trim(), sort_order: maxOrder });
+        if (error) throw error;
+        toast({ title: "הקטגוריה נוצרה" });
+      }
+      setCatDialogOpen(false);
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    const { error } = await supabase.from("categories").delete().eq("id", id);
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "הקטגוריה נמחקה" });
+    setDeleteCatTarget(null);
+    refresh();
   };
 
   const openNewGallery = () => {
@@ -404,6 +467,7 @@ const AdminPanel = () => {
           <TabsList className="mb-6 bg-secondary">
             <TabsTrigger value="galleries">גלריות</TabsTrigger>
             <TabsTrigger value="artworks">יצירות</TabsTrigger>
+            <TabsTrigger value="categories">קטגוריות</TabsTrigger>
           </TabsList>
 
           <TabsContent value="galleries">
@@ -513,6 +577,49 @@ const AdminPanel = () => {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="categories">
+            <div className="mb-4 flex justify-end">
+              <Button onClick={openNewCategory} className="gap-2">
+                <Plus className="h-4 w-4" />
+                קטגוריה חדשה
+              </Button>
+            </div>
+
+            {categoriesData.length === 0 ? (
+              <p className="py-12 text-center text-muted-foreground">אין קטגוריות עדיין</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-right text-sm">
+                  <thead className="border-b border-border bg-secondary/50">
+                    <tr>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">סדר</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoriesData.map((cat) => (
+                      <tr key={cat.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <button onClick={() => openEditCategory(cat)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       )}
 
@@ -541,7 +648,7 @@ const AdminPanel = () => {
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
+                  {categoryNames.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
                     </SelectItem>
@@ -670,6 +777,44 @@ const AdminPanel = () => {
             <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-secondary/80">ביטול</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => deleteTarget?.type === "gallery" ? deleteGallery(deleteTarget.id) : deleteArtwork(deleteTarget!.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              מחיקה
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Category dialog */}
+      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+        <DialogContent className="border-border bg-card text-foreground sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>{editingCat ? "עריכת קטגוריה" : "קטגוריה חדשה"}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Label className="text-foreground">שם *</Label>
+            <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-1" />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCatDialogOpen(false)}>ביטול</Button>
+            <Button onClick={saveCategory}>{editingCat ? "שמירה" : "יצירה"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category delete confirm */}
+      <AlertDialog open={!!deleteCatTarget} onOpenChange={(open) => !open && setDeleteCatTarget(null)}>
+        <AlertDialogContent className="border-border bg-card text-foreground" dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת קטגוריה</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              למחוק את "{deleteCatTarget?.name}"? פעולה זו אינה הפיכה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-secondary/80">ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCatTarget && deleteCategory(deleteCatTarget.id)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               מחיקה
