@@ -208,17 +208,18 @@ const GalleryRoom = () => {
         </div>
       )}
 
-      {/* Artwork Grid */}
+      {/* Section: Artworks */}
       {!isLoading && gallery && artworks.length > 0 && (
-        <>
-          {isEditMode && (
-            <div className="mb-4 flex justify-end">
+        <section>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">עבודות</h2>
+            {isEditMode && (
               <Button onClick={handleAdd} className="gap-2">
                 <Plus className="h-4 w-4" />
                 יצירה חדשה
               </Button>
-            </div>
-          )}
+            )}
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {artworks.map((artwork, idx) => (
               <div
