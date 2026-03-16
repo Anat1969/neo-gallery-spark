@@ -242,38 +242,13 @@ const ArtworkFormDialog = ({
 
           <div>
             <Label className="text-foreground">תמונה</Label>
-            <div className="mt-1 flex gap-2">
-              <Input
+            <div className="mt-1">
+              <ImageDropZone
                 value={form.image_url}
-                onChange={(e) => set("image_url", e.target.value)}
-                placeholder="URL או העלאת קובץ"
-                className="flex-1"
-                dir="ltr"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="gap-1"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              </Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f);
-                  e.target.value = "";
-                }}
+                onChange={(url) => set("image_url", url)}
+                folder="artworks"
               />
             </div>
-            {form.image_url && (
-              <img src={form.image_url} alt="" className="mt-2 h-32 w-full rounded-md object-cover" />
-            )}
           </div>
 
           <div>
