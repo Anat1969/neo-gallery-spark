@@ -41,6 +41,7 @@ import {
   X,
   ArrowRight,
 } from "lucide-react";
+import { useCategories } from "@/hooks/useCategories";
 
 interface Gallery {
   id: string;
