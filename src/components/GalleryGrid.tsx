@@ -359,10 +359,10 @@ const GalleryGrid = () => {
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.filter((c) => c !== "הכל").map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+              <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>
+                      {cat.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
