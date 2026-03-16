@@ -562,10 +562,10 @@ const AdminPanel = () => {
                         <td className="px-4 py-3 text-muted-foreground">{a.galleryName}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button onClick={() => openEditArtwork(a)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                            <button onClick={() => openEditArtwork(a)} title="עריכת פרטי היצירה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                               <Pencil className="h-4 w-4" />
                             </button>
-                            <button onClick={() => setDeleteTarget({ type: "artwork", id: a.id, name: a.title })} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
+                            <button onClick={() => setDeleteTarget({ type: "artwork", id: a.id, name: a.title })} title="מחיקת היצירה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
