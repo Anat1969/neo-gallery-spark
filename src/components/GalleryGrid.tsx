@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
+import InlineEdit from "@/components/InlineEdit";
 
 interface GalleryItem {
   id: string;
