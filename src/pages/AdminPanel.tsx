@@ -577,6 +577,49 @@ const AdminPanel = () => {
               </div>
             )}
           </TabsContent>
+
+          <TabsContent value="categories">
+            <div className="mb-4 flex justify-end">
+              <Button onClick={openNewCategory} className="gap-2">
+                <Plus className="h-4 w-4" />
+                קטגוריה חדשה
+              </Button>
+            </div>
+
+            {categoriesData.length === 0 ? (
+              <p className="py-12 text-center text-muted-foreground">אין קטגוריות עדיין</p>
+            ) : (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-right text-sm">
+                  <thead className="border-b border-border bg-secondary/50">
+                    <tr>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">סדר</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoriesData.map((cat) => (
+                      <tr key={cat.id} className="border-b border-border last:border-0">
+                        <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1">
+                            <button onClick={() => openEditCategory(cat)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </TabsContent>
         </Tabs>
       )}
 
