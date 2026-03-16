@@ -1,18 +1,11 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
-
-interface Gallery {
-  id: string;
-  slug: string;
-  name: string;
-  category: string;
-  coverImage: string;
-  artworkCount: number;
-}
 
 const CATEGORIES = [
   "הכל",
@@ -25,32 +18,30 @@ const CATEGORIES = [
   "צילום",
 ] as const;
 
-// Mock data for development
-const MOCK_GALLERIES: Gallery[] = [
-  { id: "1", slug: "urban-dreams", name: "חלומות עירוניים", category: "אדריכלות", coverImage: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80", artworkCount: 12 },
-  { id: "2", slug: "fabric-futures", name: "עתיד הבד", category: "אופנה", coverImage: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&q=80", artworkCount: 8 },
-  { id: "3", slug: "inner-spaces", name: "מרחבים פנימיים", category: "פנים", coverImage: "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=600&q=80", artworkCount: 15 },
-  { id: "4", slug: "sculpted-light", name: "אור מפוסל", category: "פיסול", coverImage: "https://images.unsplash.com/photo-1544413164-5f1b361f5bfa?w=600&q=80", artworkCount: 6 },
-  { id: "5", slug: "lens-poetry", name: "שירת העדשה", category: "צילום", coverImage: "https://images.unsplash.com/photo-1493863641943-9b68992a8d07?w=600&q=80", artworkCount: 21 },
-  { id: "6", slug: "tool-art", name: "אומנות הכלי", category: "כלים", coverImage: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?w=600&q=80", artworkCount: 9 },
-  { id: "7", slug: "raw-forms", name: "צורות גולמיות", category: "אומנות", coverImage: "https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=600&q=80", artworkCount: 17 },
-  { id: "8", slug: "concrete-visions", name: "חזיונות בטון", category: "אדריכלות", coverImage: "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?w=600&q=80", artworkCount: 11 },
-];
-
-type GalleryGridState = "loading" | "error" | "empty" | "loaded";
-
 const GalleryGrid = () => {
   const navigate = useNavigate();
   const { isEditMode } = useEditMode();
   const [activeCategory, setActiveCategory] = useState<string>("הכל");
 
-  // Simulate state — swap to test: "loading" | "error" | "empty" | "loaded"
-  const [state] = useState<GalleryGridState>("loaded");
+  const { data: galleries = [], isLoading, isError } = useQuery({
+    queryKey: ["galleries"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("galleries")
+        .select("*, artworks(count)")
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      return data.map((g: any) => ({
+        ...g,
+        artworkCount: g.artworks?.[0]?.count ?? 0,
+      }));
+    },
+  });
 
   const filtered =
     activeCategory === "הכל"
-      ? MOCK_GALLERIES
-      : MOCK_GALLERIES.filter((g) => g.category === activeCategory);
+      ? galleries
+      : galleries.filter((g: any) => g.category === activeCategory);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
@@ -72,7 +63,7 @@ const GalleryGrid = () => {
       </div>
 
       {/* Loading */}
-      {state === "loading" && (
+      {isLoading && (
         <div className="art-grid">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="overflow-hidden rounded-lg bg-card">
@@ -87,7 +78,7 @@ const GalleryGrid = () => {
       )}
 
       {/* Error */}
-      {state === "error" && (
+      {isError && (
         <div className="flex flex-col items-center justify-center gap-4 py-24">
           <p className="text-lg text-muted-foreground">לא ניתן לטעון גלריות</p>
           <Button onClick={() => window.location.reload()}>נסי שוב</Button>
@@ -95,7 +86,7 @@ const GalleryGrid = () => {
       )}
 
       {/* Empty */}
-      {state === "empty" && (
+      {!isLoading && !isError && galleries.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-4 py-24">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
             <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -105,7 +96,7 @@ const GalleryGrid = () => {
       )}
 
       {/* Loaded */}
-      {state === "loaded" && (
+      {!isLoading && !isError && galleries.length > 0 && (
         <>
           {isEditMode && (
             <div className="mb-4 flex justify-end">
@@ -116,7 +107,7 @@ const GalleryGrid = () => {
             </div>
           )}
           <div className="art-grid">
-            {filtered.map((gallery) => (
+            {filtered.map((gallery: any) => (
               <button
                 key={gallery.id}
                 onClick={() => navigate(`/gallery/${gallery.slug}`)}
@@ -142,7 +133,7 @@ const GalleryGrid = () => {
                 )}
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
-                    src={gallery.coverImage}
+                    src={gallery.cover_image}
                     alt={gallery.name}
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform group-hover:scale-105"
