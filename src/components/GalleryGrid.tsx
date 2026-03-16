@@ -203,19 +203,22 @@ const GalleryGrid = () => {
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
       <div className="mb-8 flex flex-wrap gap-2">
-        {["הכל", ...categories.map((c) => c.name)].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-              activeCategory === cat
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {["הכל", ...categories.map((c) => c.name)].map((cat) => {
+          const count = cat === "הכל" ? galleries.length : galleries.filter((g) => g.category === cat).length;
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                activeCategory === cat
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {cat} {count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {isLoading && (
