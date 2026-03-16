@@ -28,6 +28,42 @@ const GalleryRoom = () => {
   const queryClient = useQueryClient();
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch user favorites for this gallery
+  const { data: userFavorites = [] } = useQuery({
+    queryKey: ["favorites", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("favorites" as any)
+        .select("id, artwork_id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
+  });
+
+  const getFavoriteId = (artworkId: string) =>
+    userFavorites.find((f: any) => f.artwork_id === artworkId)?.id;
+
+  const handleToggleFavorite = async (e: React.MouseEvent, artworkId: string) => {
+    e.stopPropagation();
+    if (!user) {
+      toast({ title: "צריך להתחבר כדי לשמור למועדפים", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    const existingId = getFavoriteId(artworkId);
+    if (existingId) {
+      await supabase.from("favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
+      toast({ title: "הוסר מהמועדפים" });
+    } else {
+      await supabase.from("favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
+      toast({ title: "נשמר במועדפים" });
+    }
+    queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
+  };
 
   // Form dialog state
   const [formOpen, setFormOpen] = useState(false);
