@@ -42,6 +42,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
+import ImageDropZone from "@/components/ImageDropZone";
 
 interface Gallery {
   id: string;
@@ -662,8 +663,10 @@ const AdminPanel = () => {
               </Select>
             </div>
             <div>
-              <Label className="text-foreground">תמונת כיסוי (URL)</Label>
-              <Input value={gForm.coverImage} onChange={(e) => setGForm((p) => ({ ...p, coverImage: e.target.value }))} dir="ltr" className="mt-1 text-left" />
+              <Label className="text-foreground">תמונת כיסוי</Label>
+              <div className="mt-1">
+                <ImageDropZone value={gForm.coverImage} onChange={(url) => setGForm((p) => ({ ...p, coverImage: url }))} />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -709,8 +712,10 @@ const AdminPanel = () => {
               <Textarea value={aForm.post} onChange={(e) => setAForm((p) => ({ ...p, post: e.target.value }))} rows={3} className="mt-1" />
             </div>
             <div>
-              <Label className="text-foreground">תמונה (URL)</Label>
-              <Input value={aForm.imageUrl} onChange={(e) => setAForm((p) => ({ ...p, imageUrl: e.target.value }))} dir="ltr" className="mt-1 text-left" />
+              <Label className="text-foreground">תמונה</Label>
+              <div className="mt-1">
+                <ImageDropZone value={aForm.imageUrl} onChange={(url) => setAForm((p) => ({ ...p, imageUrl: url }))} folder="artworks" />
+              </div>
             </div>
             <div>
               <Label className="text-foreground">תגיות</Label>

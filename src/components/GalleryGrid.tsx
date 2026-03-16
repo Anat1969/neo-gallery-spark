@@ -36,6 +36,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
+import ImageDropZone from "@/components/ImageDropZone";
 
 interface GalleryItem {
   id: string;
@@ -381,13 +382,13 @@ const GalleryGrid = () => {
               />
             </div>
             <div>
-              <Label>תמונת כיסוי (URL)</Label>
-              <Input
-                value={form.cover_image}
-                onChange={(e) => setForm((prev) => ({ ...prev, cover_image: e.target.value }))}
-                dir="ltr"
-                className="mt-1 text-left"
-              />
+              <Label>תמונת כיסוי</Label>
+              <div className="mt-1">
+                <ImageDropZone
+                  value={form.cover_image}
+                  onChange={(url) => setForm((prev) => ({ ...prev, cover_image: url }))}
+                />
+              </div>
             </div>
           </div>
 
