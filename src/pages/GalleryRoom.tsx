@@ -18,6 +18,7 @@ import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload } fro
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
+import PageBreadcrumb from "@/components/PageBreadcrumb";
 
 const GalleryRoom = () => {
   const { id: slug } = useParams<{ id: string }>();
