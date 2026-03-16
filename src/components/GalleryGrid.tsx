@@ -36,6 +36,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
+import ImageDropZone from "@/components/ImageDropZone";
 
 interface GalleryItem {
   id: string;
