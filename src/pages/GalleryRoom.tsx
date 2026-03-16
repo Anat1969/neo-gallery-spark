@@ -300,7 +300,7 @@ const GalleryRoom = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת יצירה</AlertDialogTitle>
             <AlertDialogDescription>
-              למחוק את "{deleteTarget?.title}"? פעולה זו אינה הפיכה.
+              למחוק את היצירה? פעולה זו אינה הפיכה
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
