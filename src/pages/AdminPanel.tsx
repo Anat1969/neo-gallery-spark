@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -39,8 +42,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-/* ─── Types ─── */
-
 interface Gallery {
   id: string;
   name: string;
@@ -49,6 +50,7 @@ interface Gallery {
   category: string;
   coverImage: string;
   artworkCount: number;
+  sortOrder: number;
 }
 
 interface Artwork {
@@ -63,27 +65,10 @@ interface Artwork {
   concept: string;
   year: number;
   inspirationUrl: string;
+  galleryName: string;
 }
 
-const CATEGORIES = [
-  "Fashion",
-  "Interior",
-  "Architecture",
-  "Tools",
-  "Art",
-  "Sculpture",
-  "Photography",
-];
-
-const CATEGORY_LABELS: Record<string, string> = {
-  Fashion: "אופנה",
-  Interior: "פנים",
-  Architecture: "אדריכלות",
-  Tools: "כלים",
-  Art: "אומנות",
-  Sculpture: "פיסול",
-  Photography: "צילום",
-};
+const CATEGORIES = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
 
 const slugify = (text: string) =>
   text
@@ -92,45 +77,100 @@ const slugify = (text: string) =>
     .replace(/[^\w\u0590-\u05FF\s-]/g, "")
     .replace(/[\s]+/g, "-");
 
-/* ─── Initial mock data ─── */
-
-const INIT_GALLERIES: Gallery[] = [
-  { id: "g1", name: "חלומות עירוניים", slug: "urban-dreams", description: "סדרת עבודות אדריכלות עתידנית", category: "Architecture", coverImage: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=600&q=80", artworkCount: 3 },
-  { id: "g2", name: "עתיד הבד", slug: "fabric-futures", description: "עיצוב אופנה מונע AI", category: "Fashion", coverImage: "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=600&q=80", artworkCount: 2 },
-];
-
-const INIT_ARTWORKS: Artwork[] = [
-  { id: "a1", galleryId: "g1", title: "מגדל הרוח", topic: "אדריכלות עתידנית", post: "בניין שנושם.", imageUrl: "https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=80", tags: ["אדריכלות", "AI"], style: "ניאו-ברוטליזם", concept: "ארכיטקטורה נושמת", year: 2024, inspirationUrl: "" },
-  { id: "a2", galleryId: "g1", title: "גשר הזכוכית", topic: "תשתיות", post: "שקיפות כמעבר.", imageUrl: "https://images.unsplash.com/photo-1511818966892-d7d671e672a2?w=400&q=80", tags: ["תשתיות", "זכוכית"], style: "מינימליזם", concept: "חיבור", year: 2023, inspirationUrl: "" },
-];
-
-/* ─── Component ─── */
-
 const AdminPanel = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const [galleries, setGalleries] = useState<Gallery[]>(INIT_GALLERIES);
-  const [artworks, setArtworks] = useState<Artwork[]>(INIT_ARTWORKS);
+  const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
+    queryKey: ["admin-galleries"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("galleries")
+        .select("id, name, slug, description, category, cover_image, sort_order, artworks(count)")
+        .order("sort_order", { ascending: true });
 
-  // Gallery form
+      if (error) throw error;
+
+      return (data ?? []).map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        slug: row.slug,
+        description: row.description ?? "",
+        category: row.category,
+        coverImage: row.cover_image ?? "",
+        sortOrder: row.sort_order ?? 0,
+        artworkCount: row.artworks?.[0]?.count ?? 0,
+      })) as Gallery[];
+    },
+  });
+
+  const { data: artworks = [], isLoading: artworksLoading } = useQuery({
+    queryKey: ["admin-artworks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("artworks")
+        .select(
+          "id, gallery_id, title, topic, post, image_url, tags, style, concept, year, inspiration_url, gallery:galleries(name)",
+        )
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      return (data ?? []).map((row: any) => ({
+        id: row.id,
+        galleryId: row.gallery_id,
+        title: row.title,
+        topic: row.topic ?? "",
+        post: row.post ?? "",
+        imageUrl: row.image_url ?? "",
+        tags: row.tags ?? [],
+        style: row.style ?? "",
+        concept: row.concept ?? "",
+        year: row.year ?? new Date().getFullYear(),
+        inspirationUrl: row.inspiration_url ?? "",
+        galleryName: row.gallery?.name ?? "",
+      })) as Artwork[];
+    },
+  });
+
   const [galleryDialogOpen, setGalleryDialogOpen] = useState(false);
   const [editingGallery, setEditingGallery] = useState<Gallery | null>(null);
-  const [gForm, setGForm] = useState({ name: "", slug: "", description: "", category: "", coverImage: "" });
+  const [gForm, setGForm] = useState({
+    name: "",
+    slug: "",
+    description: "",
+    category: "",
+    coverImage: "",
+  });
 
-  // Artwork form
   const [artworkDialogOpen, setArtworkDialogOpen] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState<Artwork | null>(null);
-  const [aForm, setAForm] = useState({ galleryId: "", title: "", topic: "", post: "", imageUrl: "", tags: [] as string[], style: "", concept: "", year: new Date().getFullYear(), inspirationUrl: "" });
+  const [aForm, setAForm] = useState({
+    galleryId: "",
+    title: "",
+    topic: "",
+    post: "",
+    imageUrl: "",
+    tags: [] as string[],
+    style: "",
+    concept: "",
+    year: new Date().getFullYear(),
+    inspirationUrl: "",
+  });
   const [tagInput, setTagInput] = useState("");
 
-  // Artwork filter
   const [filterGalleryId, setFilterGalleryId] = useState<string>("all");
-
-  // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<{ type: "gallery" | "artwork"; id: string; name: string } | null>(null);
 
-  /* ── Gallery CRUD ── */
+  const isLoading = galleriesLoading || artworksLoading;
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-galleries"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-artworks"] });
+    queryClient.invalidateQueries({ queryKey: ["galleries"] });
+  };
 
   const openNewGallery = () => {
     setEditingGallery(null);
@@ -140,76 +180,180 @@ const AdminPanel = () => {
 
   const openEditGallery = (g: Gallery) => {
     setEditingGallery(g);
-    setGForm({ name: g.name, slug: g.slug, description: g.description, category: g.category, coverImage: g.coverImage });
+    setGForm({
+      name: g.name,
+      slug: g.slug,
+      description: g.description,
+      category: g.category,
+      coverImage: g.coverImage,
+    });
     setGalleryDialogOpen(true);
   };
 
-  const saveGallery = () => {
+  const saveGallery = async () => {
     if (!gForm.name || !gForm.category) {
       toast({ title: "שגיאה", description: "שם וקטגוריה הם שדות חובה", variant: "destructive" });
       return;
     }
-    const slug = gForm.slug || slugify(gForm.name);
-    if (editingGallery) {
-      setGalleries((prev) => prev.map((g) => g.id === editingGallery.id ? { ...g, ...gForm, slug } : g));
-      toast({ title: "הגלריה עודכנה" });
-    } else {
-      const newG: Gallery = { id: `g${Date.now()}`, ...gForm, slug, artworkCount: 0 };
-      setGalleries((prev) => [...prev, newG]);
-      toast({ title: "הגלריה נוצרה" });
+
+    const normalizedSlug = (gForm.slug || slugify(gForm.name)).trim();
+
+    try {
+      if (editingGallery) {
+        const { error } = await supabase
+          .from("galleries")
+          .update({
+            name: gForm.name,
+            slug: normalizedSlug,
+            description: gForm.description,
+            category: gForm.category,
+            cover_image: gForm.coverImage,
+          })
+          .eq("id", editingGallery.id);
+
+        if (error) throw error;
+        toast({ title: "הגלריה עודכנה" });
+      } else {
+        const { data: maxRow } = await supabase
+          .from("galleries")
+          .select("sort_order")
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { error } = await supabase.from("galleries").insert({
+          name: gForm.name,
+          slug: normalizedSlug,
+          description: gForm.description,
+          category: gForm.category,
+          cover_image: gForm.coverImage,
+          sort_order: (maxRow?.sort_order ?? -1) + 1,
+          created_by: user?.id ?? null,
+        });
+
+        if (error) throw error;
+        toast({ title: "הגלריה נוצרה" });
+      }
+
+      setGalleryDialogOpen(false);
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
     }
-    setGalleryDialogOpen(false);
   };
 
-  const deleteGallery = (id: string) => {
-    setGalleries((prev) => prev.filter((g) => g.id !== id));
-    setArtworks((prev) => prev.filter((a) => a.galleryId !== id));
+  const deleteGallery = async (id: string) => {
+    const { error } = await supabase.from("galleries").delete().eq("id", id);
+
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
+    }
+
     toast({ title: "הגלריה נמחקה" });
     setDeleteTarget(null);
+    refresh();
   };
-
-  /* ── Artwork CRUD ── */
 
   const openNewArtwork = () => {
     setEditingArtwork(null);
-    setAForm({ galleryId: galleries[0]?.id ?? "", title: "", topic: "", post: "", imageUrl: "", tags: [], style: "", concept: "", year: new Date().getFullYear(), inspirationUrl: "" });
+    setAForm({
+      galleryId: galleries[0]?.id ?? "",
+      title: "",
+      topic: "",
+      post: "",
+      imageUrl: "",
+      tags: [],
+      style: "",
+      concept: "",
+      year: new Date().getFullYear(),
+      inspirationUrl: "",
+    });
     setTagInput("");
     setArtworkDialogOpen(true);
   };
 
   const openEditArtwork = (a: Artwork) => {
     setEditingArtwork(a);
-    setAForm({ galleryId: a.galleryId, title: a.title, topic: a.topic, post: a.post, imageUrl: a.imageUrl, tags: [...a.tags], style: a.style, concept: a.concept, year: a.year, inspirationUrl: a.inspirationUrl });
+    setAForm({
+      galleryId: a.galleryId,
+      title: a.title,
+      topic: a.topic,
+      post: a.post,
+      imageUrl: a.imageUrl,
+      tags: [...a.tags],
+      style: a.style,
+      concept: a.concept,
+      year: a.year,
+      inspirationUrl: a.inspirationUrl,
+    });
     setTagInput("");
     setArtworkDialogOpen(true);
   };
 
-  const saveArtwork = () => {
+  const saveArtwork = async () => {
     if (!aForm.title || !aForm.galleryId) {
       toast({ title: "שגיאה", description: "שם וגלריה הם שדות חובה", variant: "destructive" });
       return;
     }
-    if (editingArtwork) {
-      setArtworks((prev) => prev.map((a) => a.id === editingArtwork.id ? { ...a, ...aForm } : a));
-      toast({ title: "היצירה עודכנה" });
-    } else {
-      const newA: Artwork = { id: `a${Date.now()}`, ...aForm };
-      setArtworks((prev) => [...prev, newA]);
-      // Update count
-      setGalleries((prev) => prev.map((g) => g.id === aForm.galleryId ? { ...g, artworkCount: g.artworkCount + 1 } : g));
-      toast({ title: "היצירה נוצרה" });
+
+    const payload = {
+      gallery_id: aForm.galleryId,
+      title: aForm.title,
+      topic: aForm.topic,
+      post: aForm.post,
+      image_url: aForm.imageUrl,
+      tags: aForm.tags,
+      style: aForm.style,
+      concept: aForm.concept,
+      year: aForm.year,
+      inspiration_url: aForm.inspirationUrl,
+    };
+
+    try {
+      if (editingArtwork) {
+        const { error } = await supabase
+          .from("artworks")
+          .update(payload)
+          .eq("id", editingArtwork.id);
+
+        if (error) throw error;
+        toast({ title: "היצירה עודכנה" });
+      } else {
+        const { data: maxRow } = await supabase
+          .from("artworks")
+          .select("sort_order")
+          .eq("gallery_id", aForm.galleryId)
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { error } = await supabase
+          .from("artworks")
+          .insert({ ...payload, sort_order: (maxRow?.sort_order ?? -1) + 1 });
+
+        if (error) throw error;
+        toast({ title: "היצירה נוצרה" });
+      }
+
+      setArtworkDialogOpen(false);
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
     }
-    setArtworkDialogOpen(false);
   };
 
-  const deleteArtwork = (id: string) => {
-    const art = artworks.find((a) => a.id === id);
-    setArtworks((prev) => prev.filter((a) => a.id !== id));
-    if (art) {
-      setGalleries((prev) => prev.map((g) => g.id === art.galleryId ? { ...g, artworkCount: Math.max(0, g.artworkCount - 1) } : g));
+  const deleteArtwork = async (id: string) => {
+    const { error } = await supabase.from("artworks").delete().eq("id", id);
+
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
     }
+
     toast({ title: "היצירה נמחקה" });
     setDeleteTarget(null);
+    refresh();
   };
 
   const addTag = () => {
@@ -224,17 +368,15 @@ const AdminPanel = () => {
     setAForm((prev) => ({ ...prev, tags: prev.tags.filter((t) => t !== tag) }));
   };
 
-  const filteredArtworks = filterGalleryId === "all" ? artworks : artworks.filter((a) => a.galleryId === filterGalleryId);
+  const filteredArtworks = useMemo(
+    () => (filterGalleryId === "all" ? artworks : artworks.filter((a) => a.galleryId === filterGalleryId)),
+    [artworks, filterGalleryId],
+  );
 
-  const galleryName = (id: string) => galleries.find((g) => g.id === id)?.name ?? "—";
-
-  const isEmpty = galleries.length === 0;
-
-  /* ── Render ── */
+  const isEmpty = !isLoading && galleries.length === 0;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
@@ -245,7 +387,8 @@ const AdminPanel = () => {
         </div>
       </div>
 
-      {/* Empty state */}
+      {isLoading && <p className="py-12 text-center text-muted-foreground">טוען נתונים...</p>}
+
       {isEmpty && (
         <div className="flex flex-col items-center justify-center gap-4 py-24">
           <p className="text-lg text-muted-foreground">אין תוכן עדיין — צרי את הגלריה הראשונה שלך</p>
@@ -256,14 +399,13 @@ const AdminPanel = () => {
         </div>
       )}
 
-      {!isEmpty && (
+      {!isLoading && !isEmpty && (
         <Tabs defaultValue="galleries" className="w-full">
           <TabsList className="mb-6 bg-secondary">
             <TabsTrigger value="galleries">גלריות</TabsTrigger>
             <TabsTrigger value="artworks">יצירות</TabsTrigger>
           </TabsList>
 
-          {/* ─── Galleries Tab ─── */}
           <TabsContent value="galleries">
             <div className="mb-4 flex justify-end">
               <Button onClick={openNewGallery} className="gap-2">
@@ -286,7 +428,7 @@ const AdminPanel = () => {
                   {galleries.map((g) => (
                     <tr key={g.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 font-medium text-foreground">{g.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{CATEGORY_LABELS[g.category] ?? g.category}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{g.category}</td>
                       <td className="px-4 py-3 text-muted-foreground">{g.artworkCount}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -308,7 +450,6 @@ const AdminPanel = () => {
             </div>
           </TabsContent>
 
-          {/* ─── Artworks Tab ─── */}
           <TabsContent value="artworks">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <Select value={filterGalleryId} onValueChange={setFilterGalleryId}>
@@ -318,7 +459,9 @@ const AdminPanel = () => {
                 <SelectContent>
                   <SelectItem value="all">כל הגלריות</SelectItem>
                   {galleries.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -352,7 +495,7 @@ const AdminPanel = () => {
                           )}
                         </td>
                         <td className="px-4 py-3 font-medium text-foreground">{a.title}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{galleryName(a.galleryId)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{a.galleryName}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
                             <button onClick={() => openEditArtwork(a)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
@@ -373,7 +516,6 @@ const AdminPanel = () => {
         </Tabs>
       )}
 
-      {/* ─── Gallery Dialog ─── */}
       <Dialog open={galleryDialogOpen} onOpenChange={setGalleryDialogOpen}>
         <DialogContent className="border-border bg-card text-foreground sm:max-w-lg">
           <DialogHeader>
@@ -382,42 +524,45 @@ const AdminPanel = () => {
           <div className="space-y-4 py-2">
             <div>
               <Label className="text-foreground">שם *</Label>
-              <Input value={gForm.name} onChange={(e) => setGForm((p) => ({ ...p, name: e.target.value, slug: p.slug || slugify(e.target.value) }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+              <Input value={gForm.name} onChange={(e) => setGForm((p) => ({ ...p, name: e.target.value, slug: p.slug || slugify(e.target.value) }))} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">Slug</Label>
-              <Input value={gForm.slug} onChange={(e) => setGForm((p) => ({ ...p, slug: e.target.value }))} dir="ltr" className="mt-1 border-muted-foreground/30 bg-secondary text-foreground text-left focus:border-primary" />
+              <Input value={gForm.slug} onChange={(e) => setGForm((p) => ({ ...p, slug: e.target.value }))} dir="ltr" className="mt-1 text-left" />
             </div>
             <div>
               <Label className="text-foreground">תיאור</Label>
-              <Textarea value={gForm.description} onChange={(e) => setGForm((p) => ({ ...p, description: e.target.value }))} rows={3} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+              <Textarea value={gForm.description} onChange={(e) => setGForm((p) => ({ ...p, description: e.target.value }))} rows={3} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">קטגוריה *</Label>
               <Select value={gForm.category} onValueChange={(v) => setGForm((p) => ({ ...p, category: v }))}>
-                <SelectTrigger className="mt-1 border-muted-foreground/30 bg-secondary text-foreground">
+                <SelectTrigger className="mt-1">
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-foreground">תמונת כיסוי (URL)</Label>
-              <Input value={gForm.coverImage} onChange={(e) => setGForm((p) => ({ ...p, coverImage: e.target.value }))} dir="ltr" className="mt-1 border-muted-foreground/30 bg-secondary text-foreground text-left focus:border-primary" />
+              <Input value={gForm.coverImage} onChange={(e) => setGForm((p) => ({ ...p, coverImage: e.target.value }))} dir="ltr" className="mt-1 text-left" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setGalleryDialogOpen(false)}>ביטול</Button>
+            <Button variant="ghost" onClick={() => setGalleryDialogOpen(false)}>
+              ביטול
+            </Button>
             <Button onClick={saveGallery}>{editingGallery ? "שמירה" : "יצירה"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ─── Artwork Dialog ─── */}
       <Dialog open={artworkDialogOpen} onOpenChange={setArtworkDialogOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto border-border bg-card text-foreground sm:max-w-lg">
           <DialogHeader>
@@ -427,31 +572,33 @@ const AdminPanel = () => {
             <div>
               <Label className="text-foreground">גלריה *</Label>
               <Select value={aForm.galleryId} onValueChange={(v) => setAForm((p) => ({ ...p, galleryId: v }))}>
-                <SelectTrigger className="mt-1 border-muted-foreground/30 bg-secondary text-foreground">
+                <SelectTrigger className="mt-1">
                   <SelectValue placeholder="בחרי גלריה" />
                 </SelectTrigger>
                 <SelectContent>
                   {galleries.map((g) => (
-                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                    <SelectItem key={g.id} value={g.id}>
+                      {g.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
               <Label className="text-foreground">שם *</Label>
-              <Input value={aForm.title} onChange={(e) => setAForm((p) => ({ ...p, title: e.target.value }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+              <Input value={aForm.title} onChange={(e) => setAForm((p) => ({ ...p, title: e.target.value }))} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">נושא</Label>
-              <Input value={aForm.topic} onChange={(e) => setAForm((p) => ({ ...p, topic: e.target.value }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+              <Input value={aForm.topic} onChange={(e) => setAForm((p) => ({ ...p, topic: e.target.value }))} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">פוסט</Label>
-              <Textarea value={aForm.post} onChange={(e) => setAForm((p) => ({ ...p, post: e.target.value }))} rows={3} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+              <Textarea value={aForm.post} onChange={(e) => setAForm((p) => ({ ...p, post: e.target.value }))} rows={3} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">תמונה (URL)</Label>
-              <Input value={aForm.imageUrl} onChange={(e) => setAForm((p) => ({ ...p, imageUrl: e.target.value }))} dir="ltr" className="mt-1 border-muted-foreground/30 bg-secondary text-foreground text-left focus:border-primary" />
+              <Input value={aForm.imageUrl} onChange={(e) => setAForm((p) => ({ ...p, imageUrl: e.target.value }))} dir="ltr" className="mt-1 text-left" />
             </div>
             <div>
               <Label className="text-foreground">תגיות</Label>
@@ -459,9 +606,13 @@ const AdminPanel = () => {
                 <Input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
                   placeholder="הקלידי תגית + Enter"
-                  className="border-muted-foreground/30 bg-secondary text-foreground focus:border-primary"
                 />
               </div>
               {aForm.tags.length > 0 && (
@@ -480,38 +631,39 @@ const AdminPanel = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-foreground">סגנון</Label>
-                <Input value={aForm.style} onChange={(e) => setAForm((p) => ({ ...p, style: e.target.value }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+                <Input value={aForm.style} onChange={(e) => setAForm((p) => ({ ...p, style: e.target.value }))} className="mt-1" />
               </div>
               <div>
                 <Label className="text-foreground">קונספט</Label>
-                <Input value={aForm.concept} onChange={(e) => setAForm((p) => ({ ...p, concept: e.target.value }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+                <Input value={aForm.concept} onChange={(e) => setAForm((p) => ({ ...p, concept: e.target.value }))} className="mt-1" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="text-foreground">שנה</Label>
-                <Input type="number" value={aForm.year} onChange={(e) => setAForm((p) => ({ ...p, year: parseInt(e.target.value) || 0 }))} className="mt-1 border-muted-foreground/30 bg-secondary text-foreground focus:border-primary" />
+                <Input type="number" value={aForm.year} onChange={(e) => setAForm((p) => ({ ...p, year: parseInt(e.target.value, 10) || new Date().getFullYear() }))} className="mt-1" />
               </div>
               <div>
                 <Label className="text-foreground">קישור השראה</Label>
-                <Input value={aForm.inspirationUrl} onChange={(e) => setAForm((p) => ({ ...p, inspirationUrl: e.target.value }))} dir="ltr" className="mt-1 border-muted-foreground/30 bg-secondary text-foreground text-left focus:border-primary" />
+                <Input value={aForm.inspirationUrl} onChange={(e) => setAForm((p) => ({ ...p, inspirationUrl: e.target.value }))} dir="ltr" className="mt-1 text-left" />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setArtworkDialogOpen(false)}>ביטול</Button>
+            <Button variant="ghost" onClick={() => setArtworkDialogOpen(false)}>
+              ביטול
+            </Button>
             <Button onClick={saveArtwork}>{editingArtwork ? "שמירה" : "יצירה"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ─── Delete Confirm ─── */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="border-border bg-card text-foreground">
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת {deleteTarget?.type === "gallery" ? "גלריה" : "יצירה"}</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              האם למחוק את "{deleteTarget?.name}"? פעולה זו בלתי הפיכה.
+              למחוק את "{deleteTarget?.name}"? פעולה זו אינה הפיכה.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -120,19 +120,28 @@ const GalleryRoom = () => {
       setDragIdx(null);
       return;
     }
+
     const reordered = [...artworks];
     const [moved] = reordered.splice(dragIdx, 1);
     reordered.splice(dropIdx, 0, moved);
 
-    // Optimistic update via query client
     queryClient.setQueryData(["artworks", gallery?.id], reordered);
     setDragIdx(null);
 
-    // Persist new sort_order
     const updates = reordered.map((a, i) => ({ id: a.id, sort_order: i }));
-    for (const u of updates) {
-      await supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id);
+    const results = await Promise.all(
+      updates.map((u) =>
+        supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id),
+      ),
+    );
+
+    const firstError = results.find((r) => r.error)?.error;
+    if (firstError) {
+      toast({ title: "שגיאה", description: firstError.message, variant: "destructive" });
+    } else {
+      toast({ title: "סדר היצירות עודכן" });
     }
+
     refresh();
   };
 
@@ -190,7 +199,7 @@ const GalleryRoom = () => {
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
             <ImageIcon className="h-8 w-8 text-muted-foreground" />
           </div>
-          <p className="text-lg text-muted-foreground">הגלריה ריקה — יצירות יתווספו בקרוב</p>
+          <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
           {isEditMode && (
             <Button onClick={handleAdd} className="gap-2">
               <Plus className="h-4 w-4" />
@@ -291,7 +300,7 @@ const GalleryRoom = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>מחיקת יצירה</AlertDialogTitle>
             <AlertDialogDescription>
-              למחוק את "{deleteTarget?.title}"? פעולה זו אינה הפיכה.
+              למחוק את היצירה? פעולה זו אינה הפיכה
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">

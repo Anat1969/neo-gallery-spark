@@ -1,9 +1,17 @@
 import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -57,6 +65,7 @@ const ArtworkFormDialog = ({
 }: ArtworkFormDialogProps) => {
   const { toast } = useToast();
   const [form, setForm] = useState<Omit<ArtworkFormData, "gallery_id">>(EMPTY_FORM);
+  const [selectedGalleryId, setSelectedGalleryId] = useState(galleryId);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -64,28 +73,45 @@ const ArtworkFormDialog = ({
 
   const isEditing = !!artwork?.id;
 
-  useEffect(() => {
-    if (open) {
-      if (artwork) {
-        setForm({
-          title: artwork.title,
-          topic: artwork.topic,
-          post: artwork.post,
-          image_url: artwork.image_url,
-          tags: [...artwork.tags],
-          style: artwork.style,
-          concept: artwork.concept,
-          year: artwork.year,
-          inspiration_url: artwork.inspiration_url,
-        });
-      } else {
-        setForm({ ...EMPTY_FORM });
-      }
-      setTagInput("");
-    }
-  }, [open, artwork]);
+  const { data: galleries = [] } = useQuery({
+    queryKey: ["galleries-for-artwork-form"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("galleries")
+        .select("id, name")
+        .order("sort_order", { ascending: true });
 
-  const set = (key: string, value: any) =>
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: open,
+  });
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (artwork) {
+      setForm({
+        title: artwork.title,
+        topic: artwork.topic,
+        post: artwork.post,
+        image_url: artwork.image_url,
+        tags: [...artwork.tags],
+        style: artwork.style,
+        concept: artwork.concept,
+        year: artwork.year,
+        inspiration_url: artwork.inspiration_url,
+      });
+      setSelectedGalleryId(artwork.gallery_id || galleryId);
+    } else {
+      setForm({ ...EMPTY_FORM });
+      setSelectedGalleryId(galleryId);
+    }
+
+    setTagInput("");
+  }, [open, artwork, galleryId]);
+
+  const set = (key: keyof typeof form, value: any) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const addTag = () => {
@@ -101,16 +127,20 @@ const ArtworkFormDialog = ({
 
   const handleUpload = async (file: File) => {
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${galleryId}/${Date.now()}.${ext}`;
+
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${selectedGalleryId || galleryId}/${Date.now()}.${ext}`;
+
     const { error } = await supabase.storage
       .from("artwork-images")
       .upload(path, file, { upsert: true });
+
     if (error) {
       toast({ title: "שגיאה בהעלאת תמונה", description: error.message, variant: "destructive" });
       setUploading(false);
       return;
     }
+
     const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
     set("image_url", urlData.publicUrl);
     setUploading(false);
@@ -121,10 +151,16 @@ const ArtworkFormDialog = ({
       toast({ title: "שגיאה", description: "שם היצירה הוא שדה חובה", variant: "destructive" });
       return;
     }
+
+    if (!selectedGalleryId) {
+      toast({ title: "שגיאה", description: "יש לבחור גלריה", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
-      gallery_id: galleryId,
+      gallery_id: selectedGalleryId,
       title: form.title,
       topic: form.topic,
       post: form.post,
@@ -136,84 +172,95 @@ const ArtworkFormDialog = ({
       inspiration_url: form.inspiration_url,
     };
 
-    if (isEditing && artwork?.id) {
-      const { error } = await supabase
-        .from("artworks")
-        .update(payload)
-        .eq("id", artwork.id);
-      if (error) {
-        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-        setSaving(false);
-        return;
-      }
-      toast({ title: "היצירה עודכנה" });
-    } else {
-      // Get max sort_order
-      const { data: maxRow } = await supabase
-        .from("artworks")
-        .select("sort_order")
-        .eq("gallery_id", galleryId)
-        .order("sort_order", { ascending: false })
-        .limit(1)
-        .single();
-      const nextOrder = (maxRow?.sort_order ?? -1) + 1;
+    try {
+      if (isEditing && artwork?.id) {
+        const { error } = await supabase
+          .from("artworks")
+          .update(payload)
+          .eq("id", artwork.id);
 
-      const { error } = await supabase
-        .from("artworks")
-        .insert({ ...payload, sort_order: nextOrder });
-      if (error) {
-        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-        setSaving(false);
-        return;
+        if (error) throw error;
+        toast({ title: "היצירה עודכנה" });
+      } else {
+        const { data: maxRow } = await supabase
+          .from("artworks")
+          .select("sort_order")
+          .eq("gallery_id", selectedGalleryId)
+          .order("sort_order", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const nextOrder = (maxRow?.sort_order ?? -1) + 1;
+
+        const { error } = await supabase
+          .from("artworks")
+          .insert({ ...payload, sort_order: nextOrder });
+
+        if (error) throw error;
+        toast({ title: "היצירה נוצרה" });
       }
-      toast({ title: "היצירה נוצרה" });
+
+      onOpenChange(false);
+      onSaved();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
-    onOpenChange(false);
-    onSaved();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-border bg-card text-foreground sm:max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card text-foreground sm:max-w-lg" dir="rtl">
         <DialogHeader>
           <DialogTitle>{isEditing ? "עריכת יצירה" : "יצירה חדשה"}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Title */}
+          <div>
+            <Label className="text-foreground">גלריה *</Label>
+            <Select value={selectedGalleryId} onValueChange={setSelectedGalleryId}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="בחרי גלריה" />
+              </SelectTrigger>
+              <SelectContent>
+                {galleries.map((gallery: any) => (
+                  <SelectItem key={gallery.id} value={gallery.id}>
+                    {gallery.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div>
             <Label className="text-foreground">שם *</Label>
             <Input
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
-              className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+              className="mt-1"
             />
           </div>
 
-          {/* Topic */}
           <div>
             <Label className="text-foreground">נושא</Label>
             <Input
               value={form.topic}
               onChange={(e) => set("topic", e.target.value)}
-              className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+              className="mt-1"
             />
           </div>
 
-          {/* Post */}
           <div>
             <Label className="text-foreground">תיאור</Label>
             <Textarea
               value={form.post}
               onChange={(e) => set("post", e.target.value)}
               rows={3}
-              className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+              className="mt-1"
             />
           </div>
 
-          {/* Image */}
           <div>
             <Label className="text-foreground">תמונה</Label>
             <div className="mt-1 flex gap-2">
@@ -221,7 +268,7 @@ const ArtworkFormDialog = ({
                 value={form.image_url}
                 onChange={(e) => set("image_url", e.target.value)}
                 placeholder="URL או העלאת קובץ"
-                className="flex-1 border-muted-foreground/30 bg-secondary text-foreground"
+                className="flex-1"
                 dir="ltr"
               />
               <Button
@@ -229,7 +276,7 @@ const ArtworkFormDialog = ({
                 variant="outline"
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                className="gap-1 border-muted-foreground/30"
+                className="gap-1"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
               </Button>
@@ -250,18 +297,22 @@ const ArtworkFormDialog = ({
             )}
           </div>
 
-          {/* Tags */}
           <div>
             <Label className="text-foreground">תגיות</Label>
             <div className="mt-1 flex gap-2">
               <Input
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addTag();
+                  }
+                }}
                 placeholder="הוסיפי תגית"
-                className="flex-1 border-muted-foreground/30 bg-secondary text-foreground"
+                className="flex-1"
               />
-              <Button type="button" variant="outline" onClick={addTag} className="border-muted-foreground/30">
+              <Button type="button" variant="outline" onClick={addTag}>
                 +
               </Button>
             </div>
@@ -282,14 +333,13 @@ const ArtworkFormDialog = ({
             )}
           </div>
 
-          {/* Style + Concept */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-foreground">סגנון</Label>
               <Input
                 value={form.style}
                 onChange={(e) => set("style", e.target.value)}
-                className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+                className="mt-1"
               />
             </div>
             <div>
@@ -297,30 +347,28 @@ const ArtworkFormDialog = ({
               <Input
                 value={form.concept}
                 onChange={(e) => set("concept", e.target.value)}
-                className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+                className="mt-1"
               />
             </div>
           </div>
 
-          {/* Year */}
           <div>
             <Label className="text-foreground">שנה</Label>
             <Input
               type="number"
               value={form.year}
-              onChange={(e) => set("year", parseInt(e.target.value) || new Date().getFullYear())}
-              className="mt-1 w-32 border-muted-foreground/30 bg-secondary text-foreground"
+              onChange={(e) => set("year", parseInt(e.target.value, 10) || new Date().getFullYear())}
+              className="mt-1 w-32"
               dir="ltr"
             />
           </div>
 
-          {/* Inspiration URL */}
           <div>
             <Label className="text-foreground">קישור השראה</Label>
             <Input
               value={form.inspiration_url}
               onChange={(e) => set("inspiration_url", e.target.value)}
-              className="mt-1 border-muted-foreground/30 bg-secondary text-foreground"
+              className="mt-1"
               dir="ltr"
             />
           </div>
