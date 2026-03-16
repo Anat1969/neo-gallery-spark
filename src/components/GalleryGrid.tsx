@@ -333,6 +333,7 @@ const GalleryGrid = () => {
           </div>
         </>
       )}
+      </section>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="border-border bg-card text-foreground sm:max-w-lg" dir="rtl">
