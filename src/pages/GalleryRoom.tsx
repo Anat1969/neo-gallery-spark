@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
+import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
