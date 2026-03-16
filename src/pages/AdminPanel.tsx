@@ -82,7 +82,14 @@ const AdminPanel = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories();
+  const categoryNames = categoriesData.length > 0 ? categoriesData.map((c) => c.name) : CATEGORIES_FALLBACK;
+
+  // Category CRUD state
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [editingCat, setEditingCat] = useState<{ id: string; name: string; sort_order: number } | null>(null);
+  const [catName, setCatName] = useState("");
+  const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
     queryKey: ["admin-galleries"],
