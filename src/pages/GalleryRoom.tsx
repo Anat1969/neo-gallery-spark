@@ -230,10 +230,13 @@ const GalleryRoom = () => {
           </div>
           <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
           {isEditMode && (
-            <Button onClick={handleAdd} className="gap-2">
-              <Plus className="h-4 w-4" />
-              יצירה חדשה
-            </Button>
+            <div
+              onClick={handleAddInline}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 px-8 py-6 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
+            >
+              <Plus className="h-10 w-10" />
+              <span className="text-sm font-medium">הוסיפי יצירה ראשונה</span>
+            </div>
           )}
         </div>
       )}
