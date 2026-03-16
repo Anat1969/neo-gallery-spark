@@ -784,6 +784,44 @@ const AdminPanel = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Category dialog */}
+      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+        <DialogContent className="border-border bg-card text-foreground sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>{editingCat ? "עריכת קטגוריה" : "קטגוריה חדשה"}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Label className="text-foreground">שם *</Label>
+            <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-1" />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCatDialogOpen(false)}>ביטול</Button>
+            <Button onClick={saveCategory}>{editingCat ? "שמירה" : "יצירה"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Category delete confirm */}
+      <AlertDialog open={!!deleteCatTarget} onOpenChange={(open) => !open && setDeleteCatTarget(null)}>
+        <AlertDialogContent className="border-border bg-card text-foreground" dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת קטגוריה</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              למחוק את "{deleteCatTarget?.name}"? פעולה זו אינה הפיכה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border bg-secondary text-foreground hover:bg-secondary/80">ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteCatTarget && deleteCategory(deleteCatTarget.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              מחיקה
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
