@@ -74,7 +74,24 @@ const GalleryRoom = () => {
     queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
   }, [queryClient, gallery?.id]);
 
-  // Open new artwork form
+  // Add artwork inline (create in DB immediately, then user can rename inline)
+  const handleAddInline = async () => {
+    if (!gallery) return;
+    const nextOrder = artworks.length > 0 ? Math.max(...artworks.map(a => a.sort_order)) + 1 : 0;
+    const { data, error } = await supabase
+      .from("artworks")
+      .insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
+    }
+    refresh();
+    toast({ title: "יצירה נוספה — לחצי פעמיים על השם לעריכה" });
+  };
+
+  // Open new artwork form (full dialog)
   const handleAdd = () => {
     setEditingArtwork(null);
     setFormOpen(true);
