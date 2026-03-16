@@ -265,13 +265,19 @@ const GalleryRoom = () => {
                     </span>
                   </div>
                 )}
-                <div className="relative aspect-square overflow-hidden">
-                  <img
-                    src={artwork.image_url}
-                    alt={artwork.title}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                  />
+                <div className="relative aspect-square overflow-hidden bg-secondary">
+                  {artwork.image_url ? (
+                    <img
+                      src={artwork.image_url}
+                      alt={artwork.title}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="text-base font-semibold text-foreground">{artwork.title}</h3>
