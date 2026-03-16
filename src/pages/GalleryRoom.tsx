@@ -265,7 +265,40 @@ const GalleryRoom = () => {
                     </span>
                   </div>
                 )}
-                <div className="relative aspect-square overflow-hidden bg-secondary">
+                <div
+                  className="relative aspect-square overflow-hidden bg-secondary"
+                  onDragOver={(e) => { if (isEditMode) e.preventDefault(); }}
+                  onDrop={async (e) => {
+                    if (!isEditMode) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file?.type.startsWith("image/")) return;
+                    const ext = file.name.split(".").pop() ?? "png";
+                    const path = `artworks/${crypto.randomUUID()}.${ext}`;
+                    const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+                    if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                    const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
+                    await supabase.from("artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
+                    queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
+                    toast({ title: "התמונה עודכנה" });
+                  }}
+                  onPaste={async (e) => {
+                    if (!isEditMode) return;
+                    const file = Array.from(e.clipboardData.items).find(i => i.type.startsWith("image/"))?.getAsFile();
+                    if (!file) return;
+                    e.preventDefault();
+                    const ext = "png";
+                    const path = `artworks/${crypto.randomUUID()}.${ext}`;
+                    const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+                    if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                    const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
+                    await supabase.from("artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
+                    queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
+                    toast({ title: "התמונה עודכנה" });
+                  }}
+                  tabIndex={isEditMode ? 0 : undefined}
+                >
                   {artwork.image_url ? (
                     <img
                       src={artwork.image_url}
@@ -274,8 +307,11 @@ const GalleryRoom = () => {
                       className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center">
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2">
                       <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+                      {isEditMode && (
+                        <p className="text-xs text-muted-foreground/60">גררי או הדביקי תמונה</p>
+                      )}
                     </div>
                   )}
                 </div>
