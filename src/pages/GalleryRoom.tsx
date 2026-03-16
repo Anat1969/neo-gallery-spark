@@ -74,7 +74,24 @@ const GalleryRoom = () => {
     queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
   }, [queryClient, gallery?.id]);
 
-  // Open new artwork form
+  // Add artwork inline (create in DB immediately, then user can rename inline)
+  const handleAddInline = async () => {
+    if (!gallery) return;
+    const nextOrder = artworks.length > 0 ? Math.max(...artworks.map(a => a.sort_order)) + 1 : 0;
+    const { data, error } = await supabase
+      .from("artworks")
+      .insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      return;
+    }
+    refresh();
+    toast({ title: "יצירה נוספה — לחצי פעמיים על השם לעריכה" });
+  };
+
+  // Open new artwork form (full dialog)
   const handleAdd = () => {
     setEditingArtwork(null);
     setFormOpen(true);
@@ -213,10 +230,13 @@ const GalleryRoom = () => {
           </div>
           <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
           {isEditMode && (
-            <Button onClick={handleAdd} className="gap-2">
-              <Plus className="h-4 w-4" />
-              יצירה חדשה
-            </Button>
+            <div
+              onClick={handleAddInline}
+              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 px-8 py-6 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
+            >
+              <Plus className="h-10 w-10" />
+              <span className="text-sm font-medium">הוסיפי יצירה ראשונה</span>
+            </div>
           )}
         </div>
       )}
@@ -226,12 +246,6 @@ const GalleryRoom = () => {
         <section>
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-foreground">עבודות</h2>
-            {isEditMode && (
-              <Button onClick={handleAdd} className="gap-2">
-                <Plus className="h-4 w-4" />
-                יצירה חדשה
-              </Button>
-            )}
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {artworks.map((artwork, idx) => (
@@ -346,6 +360,17 @@ const GalleryRoom = () => {
                 </div>
               </div>
             ))}
+            {/* Inline add card */}
+            {isEditMode && (
+              <div
+                onClick={handleAddInline}
+                className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
+                style={{ minHeight: "280px" }}
+              >
+                <Plus className="h-10 w-10" />
+                <span className="text-sm font-medium">הוסיפי יצירה</span>
+              </div>
+            )}
           </div>
         </section>
       )}
