@@ -663,8 +663,10 @@ const AdminPanel = () => {
               </Select>
             </div>
             <div>
-              <Label className="text-foreground">תמונת כיסוי (URL)</Label>
-              <Input value={gForm.coverImage} onChange={(e) => setGForm((p) => ({ ...p, coverImage: e.target.value }))} dir="ltr" className="mt-1 text-left" />
+              <Label className="text-foreground">תמונת כיסוי</Label>
+              <div className="mt-1">
+                <ImageDropZone value={gForm.coverImage} onChange={(url) => setGForm((p) => ({ ...p, coverImage: url }))} />
+              </div>
             </div>
           </div>
           <DialogFooter>
