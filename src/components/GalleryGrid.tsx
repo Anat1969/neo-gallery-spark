@@ -214,7 +214,9 @@ const GalleryGrid = () => {
             return (
               <div
                 key={cat}
-                className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                role="button"
+                onClick={() => setActiveCategory(cat)}
+                className={`flex cursor-pointer items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   activeCategory === cat
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground hover:text-foreground"
@@ -235,10 +237,9 @@ const GalleryGrid = () => {
                     }}
                   />
                 ) : (
-                  <button onClick={() => setActiveCategory(cat)}>{cat}</button>
+                  <span>{cat}</span>
                 )}
-                {!isEditMode && <button onClick={() => setActiveCategory(cat)}>{count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}</button>}
-                {isEditMode && count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}
+                {count > 0 && <span className="mr-1 text-xs opacity-75">{count}</span>}
               </div>
             );
           })}
