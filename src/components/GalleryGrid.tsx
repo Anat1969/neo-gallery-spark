@@ -344,7 +344,19 @@ const GalleryGrid = () => {
                   </span>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-base font-semibold text-foreground">{gallery.name}</h3>
+                  <InlineEdit
+                    value={gallery.name}
+                    enabled={isEditMode}
+                    as="h3"
+                    className="text-base font-semibold text-foreground"
+                    inputClassName="text-base font-semibold w-full"
+                    onSave={async (newName) => {
+                      const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                      refresh();
+                      toast({ title: "שם הגלריה עודכן" });
+                    }}
+                  />
                   <p className="mt-1 text-sm text-muted-foreground">{gallery.artworkCount} עבודות</p>
                 </div>
               </button>

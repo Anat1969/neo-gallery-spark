@@ -329,7 +329,19 @@ const GalleryRoom = () => {
                   )}
                 </div>
                 <div className="p-4">
-                  <h3 className="text-base font-semibold text-foreground">{artwork.title}</h3>
+                  <InlineEdit
+                    value={artwork.title}
+                    enabled={isEditMode}
+                    as="h3"
+                    className="text-base font-semibold text-foreground"
+                    inputClassName="text-base font-semibold w-full"
+                    onSave={async (newTitle) => {
+                      const { error } = await supabase.from("artworks").update({ title: newTitle }).eq("id", artwork.id);
+                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                      refresh();
+                      toast({ title: "שם היצירה עודכן" });
+                    }}
+                  />
                   <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
                 </div>
               </div>
