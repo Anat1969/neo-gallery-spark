@@ -467,6 +467,7 @@ const AdminPanel = () => {
           <TabsList className="mb-6 bg-secondary">
             <TabsTrigger value="galleries">גלריות</TabsTrigger>
             <TabsTrigger value="artworks">יצירות</TabsTrigger>
+            <TabsTrigger value="categories">קטגוריות</TabsTrigger>
           </TabsList>
 
           <TabsContent value="galleries">
