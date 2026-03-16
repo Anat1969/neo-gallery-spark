@@ -19,6 +19,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import InlineEdit from "@/components/InlineEdit";
 
 const GalleryRoom = () => {
   const { id: slug } = useParams<{ id: string }>();
