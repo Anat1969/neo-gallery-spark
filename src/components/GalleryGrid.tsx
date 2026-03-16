@@ -62,7 +62,8 @@ const GalleryGrid = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [activeCategory, setActiveCategory] = useState<Category>("הכל");
+  const { data: categories = [] } = useCategories();
+  const [activeCategory, setActiveCategory] = useState("הכל");
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingGallery, setEditingGallery] = useState<GalleryItem | null>(null);
