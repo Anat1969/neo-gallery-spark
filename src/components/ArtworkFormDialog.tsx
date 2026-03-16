@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,8 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X, Upload } from "lucide-react";
+import { Loader2, X } from "lucide-react";
+import ImageDropZone from "@/components/ImageDropZone";
 
 interface ArtworkFormData {
   id?: string;
@@ -68,8 +69,6 @@ const ArtworkFormDialog = ({
   const [selectedGalleryId, setSelectedGalleryId] = useState(galleryId);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const isEditing = !!artwork?.id;
 
@@ -125,26 +124,6 @@ const ArtworkFormDialog = ({
   const removeTag = (tag: string) =>
     set("tags", form.tags.filter((t) => t !== tag));
 
-  const handleUpload = async (file: File) => {
-    setUploading(true);
-
-    const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${selectedGalleryId || galleryId}/${Date.now()}.${ext}`;
-
-    const { error } = await supabase.storage
-      .from("artwork-images")
-      .upload(path, file, { upsert: true });
-
-    if (error) {
-      toast({ title: "שגיאה בהעלאת תמונה", description: error.message, variant: "destructive" });
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
-    set("image_url", urlData.publicUrl);
-    setUploading(false);
-  };
 
   const handleSave = async () => {
     if (!form.title.trim()) {
@@ -263,38 +242,13 @@ const ArtworkFormDialog = ({
 
           <div>
             <Label className="text-foreground">תמונה</Label>
-            <div className="mt-1 flex gap-2">
-              <Input
+            <div className="mt-1">
+              <ImageDropZone
                 value={form.image_url}
-                onChange={(e) => set("image_url", e.target.value)}
-                placeholder="URL או העלאת קובץ"
-                className="flex-1"
-                dir="ltr"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileRef.current?.click()}
-                disabled={uploading}
-                className="gap-1"
-              >
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              </Button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleUpload(f);
-                  e.target.value = "";
-                }}
+                onChange={(url) => set("image_url", url)}
+                folder="artworks"
               />
             </div>
-            {form.image_url && (
-              <img src={form.image_url} alt="" className="mt-2 h-32 w-full rounded-md object-cover" />
-            )}
           </div>
 
           <div>
