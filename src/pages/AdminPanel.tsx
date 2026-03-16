@@ -580,7 +580,7 @@ const AdminPanel = () => {
 
           <TabsContent value="categories">
             <div className="mb-4 flex justify-end">
-              <Button onClick={openNewCategory} className="gap-2">
+              <Button onClick={openNewCategory} className="gap-2" title="הוספת קטגוריה חדשה למערכת">
                 <Plus className="h-4 w-4" />
                 קטגוריה חדשה
               </Button>
@@ -594,27 +594,32 @@ const AdminPanel = () => {
                   <thead className="border-b border-border bg-secondary/50">
                     <tr>
                       <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">גלריות</th>
                       <th className="px-4 py-3 font-medium text-muted-foreground">סדר</th>
                       <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {categoriesData.map((cat) => (
-                      <tr key={cat.id} className="border-b border-border last:border-0">
-                        <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
-                            <button onClick={() => openEditCategory(cat)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                    {categoriesData.map((cat) => {
+                      const galleryCount = galleries.filter((g) => g.category === cat.name).length;
+                      return (
+                        <tr key={cat.id} className="border-b border-border last:border-0">
+                          <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{galleryCount}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-1">
+                              <button onClick={() => openEditCategory(cat)} title="עריכת שם הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} title="מחיקת הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
