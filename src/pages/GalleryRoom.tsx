@@ -2,6 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload } from "lucide-react";
+import { ArrowRight, ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload, Heart } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
@@ -27,6 +28,42 @@ const GalleryRoom = () => {
   const queryClient = useQueryClient();
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Fetch user favorites for this gallery
+  const { data: userFavorites = [] } = useQuery({
+    queryKey: ["favorites", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("favorites" as any)
+        .select("id, artwork_id")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+    enabled: !!user,
+  });
+
+  const getFavoriteId = (artworkId: string) =>
+    userFavorites.find((f: any) => f.artwork_id === artworkId)?.id;
+
+  const handleToggleFavorite = async (e: React.MouseEvent, artworkId: string) => {
+    e.stopPropagation();
+    if (!user) {
+      toast({ title: "צריך להתחבר כדי לשמור למועדפים", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+    const existingId = getFavoriteId(artworkId);
+    if (existingId) {
+      await supabase.from("favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
+      toast({ title: "הוסר מהמועדפים" });
+    } else {
+      await supabase.from("favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
+      toast({ title: "נשמר במועדפים" });
+    }
+    queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
+  };
 
   // Form dialog state
   const [formOpen, setFormOpen] = useState(false);
@@ -342,21 +379,33 @@ const GalleryRoom = () => {
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <InlineEdit
-                    value={artwork.title}
-                    enabled={isEditMode}
-                    as="h3"
-                    className="text-base font-semibold text-foreground"
-                    inputClassName="text-base font-semibold w-full"
-                    onSave={async (newTitle) => {
-                      const { error } = await supabase.from("artworks").update({ title: newTitle }).eq("id", artwork.id);
-                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                      refresh();
-                      toast({ title: "שם היצירה עודכן" });
-                    }}
-                  />
-                  <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
+                <div className="flex items-start justify-between p-4">
+                  <div className="min-w-0 flex-1">
+                    <InlineEdit
+                      value={artwork.title}
+                      enabled={isEditMode}
+                      as="h3"
+                      className="text-base font-semibold text-foreground"
+                      inputClassName="text-base font-semibold w-full"
+                      onSave={async (newTitle) => {
+                        const { error } = await supabase.from("artworks").update({ title: newTitle }).eq("id", artwork.id);
+                        if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                        refresh();
+                        toast({ title: "שם היצירה עודכן" });
+                      }}
+                    />
+                    <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
+                  </div>
+                  <button
+                    onClick={(e) => handleToggleFavorite(e, artwork.id)}
+                    className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${
+                      getFavoriteId(artwork.id)
+                        ? "text-primary"
+                        : "text-muted-foreground/40 hover:text-primary"
+                    }`}
+                  >
+                    <Heart className={`h-4 w-4 ${getFavoriteId(artwork.id) ? "fill-primary" : ""}`} />
+                  </button>
                 </div>
               </div>
             ))}
