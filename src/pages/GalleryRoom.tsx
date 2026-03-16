@@ -148,15 +148,13 @@ const GalleryRoom = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-      {/* Back button */}
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/")}
-        className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
-      >
-        <ArrowRight className="h-4 w-4" />
-        חזרה לגלריות
-      </Button>
+      {/* Breadcrumb */}
+      <PageBreadcrumb crumbs={[
+        { label: "גלריות", to: "/" },
+        { label: gallery?.name ?? "..." },
+      ]} />
+
+      <div className="mt-4" />
 
       {/* Loading */}
       {isLoading && (
