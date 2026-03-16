@@ -604,7 +604,7 @@ const AdminPanel = () => {
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
+                  {categoryNames.map((c) => (
                     <SelectItem key={c} value={c}>
                       {c}
                     </SelectItem>
