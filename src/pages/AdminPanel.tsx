@@ -82,6 +82,7 @@ const AdminPanel = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories();
   const categoryNames = categoriesData.length > 0 ? categoriesData.map((c) => c.name) : CATEGORIES_FALLBACK;
 
