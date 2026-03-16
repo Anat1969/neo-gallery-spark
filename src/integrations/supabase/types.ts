@@ -14,6 +14,107 @@ export type Database = {
   }
   public: {
     Tables: {
+      artworks: {
+        Row: {
+          concept: string | null
+          created_at: string
+          gallery_id: string
+          id: string
+          image_url: string | null
+          inspiration_label: string | null
+          inspiration_url: string | null
+          post: string | null
+          sort_order: number
+          style: string | null
+          tags: string[] | null
+          title: string
+          topic: string | null
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          concept?: string | null
+          created_at?: string
+          gallery_id: string
+          id?: string
+          image_url?: string | null
+          inspiration_label?: string | null
+          inspiration_url?: string | null
+          post?: string | null
+          sort_order?: number
+          style?: string | null
+          tags?: string[] | null
+          title: string
+          topic?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          concept?: string | null
+          created_at?: string
+          gallery_id?: string
+          id?: string
+          image_url?: string | null
+          inspiration_label?: string | null
+          inspiration_url?: string | null
+          post?: string | null
+          sort_order?: number
+          style?: string | null
+          tags?: string[] | null
+          title?: string
+          topic?: string | null
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artworks_gallery_id_fkey"
+            columns: ["gallery_id"]
+            isOneToOne: false
+            referencedRelation: "galleries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      galleries: {
+        Row: {
+          category: string
+          cover_image: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          cover_image?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          cover_image?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
