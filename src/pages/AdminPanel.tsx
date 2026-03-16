@@ -496,13 +496,13 @@ const AdminPanel = () => {
                       <td className="px-4 py-3 text-muted-foreground">{g.artworkCount}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <button onClick={() => openEditGallery(g)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                          <button onClick={() => openEditGallery(g)} title="עריכת פרטי הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                             <Pencil className="h-4 w-4" />
                           </button>
-                          <button onClick={() => navigate(`/gallery/${g.slug}`)} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                          <button onClick={() => navigate(`/gallery/${g.slug}`)} title="צפייה בגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                             <ExternalLink className="h-4 w-4" />
                           </button>
-                          <button onClick={() => setDeleteTarget({ type: "gallery", id: g.id, name: g.name })} className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
+                          <button onClick={() => setDeleteTarget({ type: "gallery", id: g.id, name: g.name })} title="מחיקת הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </div>
