@@ -67,15 +67,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 
   useEffect(() => {
+    // onAuthStateChange fires INITIAL_SESSION on setup — no need for separate getSession
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         handleSession(session);
       }
     );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-    });
 
     return () => subscription.unsubscribe();
   }, [handleSession]);

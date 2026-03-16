@@ -64,12 +64,6 @@
     min-height: 44px;
   }
 
-  /* Snappy transitions */
-  *,
-  *::before,
-  *::after {
-    transition-duration: 200ms;
-  }
 }
 
 /* Responsive grid utility */
