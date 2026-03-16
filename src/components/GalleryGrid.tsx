@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
+import InlineEdit from "@/components/InlineEdit";
 
 interface GalleryItem {
   id: string;
@@ -207,20 +208,38 @@ const GalleryGrid = () => {
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold text-foreground">קטגוריות</h2>
         <div className="flex flex-wrap gap-2">
-          {["הכל", ...categories.map((c) => c.name)].map((cat) => {
+           {["הכל", ...categories.map((c) => c.name)].map((cat) => {
+            const catObj = categories.find((c) => c.name === cat);
             const count = cat === "הכל" ? galleries.length : galleries.filter((g) => g.category === cat).length;
             return (
-              <button
+              <div
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                   activeCategory === cat
                     ? "bg-primary text-primary-foreground"
                     : "bg-secondary text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {cat} {count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}
-              </button>
+                {catObj && isEditMode ? (
+                  <InlineEdit
+                    value={cat}
+                    enabled
+                    className="text-sm font-medium"
+                    inputClassName="text-sm h-6 w-24"
+                    onSave={async (newName) => {
+                      const { error } = await supabase.from("categories").update({ name: newName }).eq("id", catObj.id);
+                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                      queryClient.invalidateQueries({ queryKey: ["categories"] });
+                      queryClient.invalidateQueries({ queryKey: ["galleries"] });
+                      toast({ title: "הקטגוריה עודכנה" });
+                    }}
+                  />
+                ) : (
+                  <button onClick={() => setActiveCategory(cat)}>{cat}</button>
+                )}
+                {!isEditMode && <button onClick={() => setActiveCategory(cat)}>{count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}</button>}
+                {isEditMode && count > 0 && <span className="ml-1 text-xs opacity-75">{count}</span>}
+              </div>
             );
           })}
         </div>
@@ -325,7 +344,19 @@ const GalleryGrid = () => {
                   </span>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-base font-semibold text-foreground">{gallery.name}</h3>
+                  <InlineEdit
+                    value={gallery.name}
+                    enabled={isEditMode}
+                    as="h3"
+                    className="text-base font-semibold text-foreground"
+                    inputClassName="text-base font-semibold w-full"
+                    onSave={async (newName) => {
+                      const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                      refresh();
+                      toast({ title: "שם הגלריה עודכן" });
+                    }}
+                  />
                   <p className="mt-1 text-sm text-muted-foreground">{gallery.artworkCount} עבודות</p>
                 </div>
               </button>

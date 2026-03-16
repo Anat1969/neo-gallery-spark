@@ -19,6 +19,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import InlineEdit from "@/components/InlineEdit";
 
 const GalleryRoom = () => {
   const { id: slug } = useParams<{ id: string }>();
@@ -182,7 +183,19 @@ const GalleryRoom = () => {
       {!isLoading && gallery && (
         <header className="mb-8">
           <div className="flex flex-wrap items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold text-foreground md:text-4xl">{gallery.name}</h1>
+            <InlineEdit
+              value={gallery.name}
+              enabled={isEditMode}
+              as="h1"
+              className="text-3xl font-bold text-foreground md:text-4xl"
+              inputClassName="text-3xl font-bold md:text-4xl"
+              onSave={async (newName) => {
+                const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                queryClient.invalidateQueries({ queryKey: ["gallery", slug] });
+                toast({ title: "שם הגלריה עודכן" });
+              }}
+            />
             <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
               {gallery.category}
             </span>
@@ -316,7 +329,19 @@ const GalleryRoom = () => {
                   )}
                 </div>
                 <div className="p-4">
-                  <h3 className="text-base font-semibold text-foreground">{artwork.title}</h3>
+                  <InlineEdit
+                    value={artwork.title}
+                    enabled={isEditMode}
+                    as="h3"
+                    className="text-base font-semibold text-foreground"
+                    inputClassName="text-base font-semibold w-full"
+                    onSave={async (newTitle) => {
+                      const { error } = await supabase.from("artworks").update({ title: newTitle }).eq("id", artwork.id);
+                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                      refresh();
+                      toast({ title: "שם היצירה עודכן" });
+                    }}
+                  />
                   <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
                 </div>
               </div>
