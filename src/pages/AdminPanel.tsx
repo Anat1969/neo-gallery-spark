@@ -42,6 +42,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
+import ImageDropZone from "@/components/ImageDropZone";
 
 interface Gallery {
   id: string;
