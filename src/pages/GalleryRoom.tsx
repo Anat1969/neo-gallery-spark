@@ -122,33 +122,47 @@ const GalleryRoom = () => {
     enabled: !!slug,
   });
 
-  // Fetch rooms for this gallery
+  // Fetch rooms for this gallery — silently returns [] if table doesn't exist yet
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms", gallery?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("rooms" as any)
-        .select("*")
-        .eq("gallery_id", gallery!.id)
-        .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
+      try {
+        const { data, error } = await supabase
+          .from("rooms" as any)
+          .select("*")
+          .eq("gallery_id", gallery!.id)
+          .order("sort_order", { ascending: true });
+        if (error) return [];
+        return (data ?? []) as any[];
+      } catch {
+        return [];
+      }
     },
     enabled: !!gallery?.id,
   });
 
-  // Fetch artworks without a room (gallery root)
+  // Fetch artworks — filter by room_id IS NULL if column exists, else return all
   const { data: artworks = [], isLoading: artworksLoading } = useQuery({
     queryKey: ["artworks", gallery?.id],
     queryFn: async () => {
+      // Try with room_id filter first (post-migration)
       const { data, error } = await supabase
         .from("artworks")
         .select("*")
         .eq("gallery_id", gallery!.id)
         .is("room_id" as any, null)
         .order("sort_order", { ascending: true });
-      if (error) throw error;
-      return data;
+
+      if (error) {
+        // Migration not applied yet — fall back to all artworks
+        const { data: fallback } = await supabase
+          .from("artworks")
+          .select("*")
+          .eq("gallery_id", gallery!.id)
+          .order("sort_order", { ascending: true });
+        return fallback ?? [];
+      }
+      return data ?? [];
     },
     enabled: !!gallery?.id,
   });
@@ -377,7 +391,7 @@ const GalleryRoom = () => {
           </div>
 
           {(rooms as any[]).length === 0 && !isEditMode && (
-            <p className="text-sm text-muted-foreground">אין חדרים בגלריה זו</p>
+            <p className="text-sm text-muted-foreground italic">עברי למצב עריכה כדי ליצור חדרים</p>
           )}
 
           {((rooms as any[]).length > 0 || isEditMode) && (
