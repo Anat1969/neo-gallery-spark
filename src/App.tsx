@@ -16,6 +16,7 @@ import ArtworkPage from "./pages/ArtworkPage.tsx";
 import SearchPage from "./pages/SearchPage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import ForbiddenPage from "./pages/ForbiddenPage.tsx";
+import RoomPage from "./pages/RoomPage.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,7 @@ const App = () => (
               {/* Public */}
               <Route path="/" element={<Index />} />
               <Route path="/gallery/:id" element={<GalleryRoom />} />
+              <Route path="/gallery/:gallerySlug/room/:roomSlug" element={<RoomPage />} />
               <Route path="/artwork/:id" element={<ArtworkPage />} />
               <Route path="/search" element={<SearchPage />} />
               <Route path="/login" element={<LoginPage />} />
