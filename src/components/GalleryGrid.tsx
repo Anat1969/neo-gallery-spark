@@ -210,6 +210,13 @@ const GalleryGrid = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12" dir="rtl">
+      <PageBreadcrumb
+        crumbs={[
+          { label: "קטגוריות", to: "/" },
+          ...(activeCategory !== "הכל" ? [{ label: activeCategory }] : []),
+        ]}
+      />
+
       {/* Section: Categories */}
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold text-foreground">קטגוריות</h2>
