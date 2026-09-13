@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,6 +38,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
 import InlineEdit from "@/components/InlineEdit";
+import PageBreadcrumb from "@/components/PageBreadcrumb";
 
 interface GalleryItem {
   id: string;
@@ -65,7 +66,12 @@ const GalleryGrid = () => {
   const { user } = useAuth();
 
   const { data: categories = [] } = useCategories();
-  const [activeCategory, setActiveCategory] = useState("הכל");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCategory = searchParams.get("category") || "הכל";
+  const setActiveCategory = (cat: string) => {
+    if (cat === "הכל") setSearchParams({}, { replace: true });
+    else setSearchParams({ category: cat }, { replace: true });
+  };
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingGallery, setEditingGallery] = useState<GalleryItem | null>(null);
@@ -204,6 +210,13 @@ const GalleryGrid = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12" dir="rtl">
+      <PageBreadcrumb
+        crumbs={[
+          { label: "קטגוריות", to: "/" },
+          ...(activeCategory !== "הכל" ? [{ label: activeCategory }] : []),
+        ]}
+      />
+
       {/* Section: Categories */}
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold text-foreground">קטגוריות</h2>
