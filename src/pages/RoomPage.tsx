@@ -84,12 +84,12 @@ const RoomPage = () => {
     queryKey: ["room-artworks", room?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("artworks")
+        .from("artworks" as any)
         .select("*")
-        .eq("room_id" as any, room!.id)
+        .eq("room_id", room!.id)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return data;
+      return data as any[];
     },
     enabled: !!room?.id,
   });
