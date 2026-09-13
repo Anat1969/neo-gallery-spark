@@ -41,7 +41,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
       const { data, error } = await supabase
         .from("artworks")
         .select(
-          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:galleries(name, slug)",
+          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:galleries(name, slug, category)",
         )
         .eq("id", id!)
         .maybeSingle();
@@ -122,11 +122,21 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             <X className="h-5 w-5" />
           </button>
         ) : (
-          <PageBreadcrumb crumbs={[
-            { label: "גלריות", to: "/" },
-            ...(artwork?.gallery ? [{ label: (artwork.gallery as any).name, to: `/gallery/${(artwork.gallery as any).slug}` }] : []),
-            { label: artwork?.title ?? "..." },
-          ]} />
+          <PageBreadcrumb
+            sticky={false}
+            crumbs={[
+              ...((artwork?.gallery as any)?.category
+                ? [{
+                    label: (artwork!.gallery as any).category,
+                    to: `/?category=${encodeURIComponent((artwork!.gallery as any).category)}`,
+                  }]
+                : [{ label: "גלריות", to: "/" }]),
+              ...(artwork?.gallery
+                ? [{ label: (artwork.gallery as any).name, to: `/gallery/${(artwork.gallery as any).slug}` }]
+                : []),
+              { label: artwork?.title ?? "..." },
+            ]}
+          />
         )}
 
         {isEditMode && artwork?.gallery?.slug && (
