@@ -66,7 +66,12 @@ const GalleryGrid = () => {
   const { user } = useAuth();
 
   const { data: categories = [] } = useCategories();
-  const [activeCategory, setActiveCategory] = useState("הכל");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeCategory = searchParams.get("category") || "הכל";
+  const setActiveCategory = (cat: string) => {
+    if (cat === "הכל") setSearchParams({}, { replace: true });
+    else setSearchParams({ category: cat }, { replace: true });
+  };
   const [formOpen, setFormOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingGallery, setEditingGallery] = useState<GalleryItem | null>(null);
