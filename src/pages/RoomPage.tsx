@@ -19,6 +19,7 @@ import {
 import { ImageIcon, Plus, Pencil, Trash2, GripVertical, Heart, FolderMinus } from "lucide-react";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 
 const RoomPage = () => {
