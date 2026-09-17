@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789638964216,
+      "tag": "0000_add_category_project_fields",
+      "breakpoints": true
+    }
+  ]
+}

@@ -85,6 +85,8 @@ const AdminPanel = () => {
   const [catDialogOpen, setCatDialogOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<{ id: string; name: string; sort_order: number } | null>(null);
   const [catName, setCatName] = useState("");
+  const [catProjectName, setCatProjectName] = useState("");
+  const [catAppName, setCatAppName] = useState("");
   const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
@@ -180,12 +182,16 @@ const AdminPanel = () => {
   const openNewCategory = () => {
     setEditingCat(null);
     setCatName("");
+    setCatProjectName("");
+    setCatAppName("");
     setCatDialogOpen(true);
   };
 
-  const openEditCategory = (cat: { id: string; name: string; sort_order: number }) => {
+  const openEditCategory = (cat: { id: string; name: string; sort_order: number; project_name?: string; app_name?: string }) => {
     setEditingCat(cat);
     setCatName(cat.name);
+    setCatProjectName(cat.project_name ?? "");
+    setCatAppName(cat.app_name ?? "");
     setCatDialogOpen(true);
   };
 
@@ -199,7 +205,7 @@ const AdminPanel = () => {
       if (editingCat) {
         const { error } = await supabase
           .from("categories")
-          .update({ name: catName.trim() })
+          .update({ name: catName.trim(), project_name: catProjectName.trim(), app_name: catAppName.trim() })
           .eq("id", editingCat.id);
         if (error) throw error;
         toast({ title: "הקטגוריה עודכנה" });
@@ -207,7 +213,7 @@ const AdminPanel = () => {
         const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map((c) => c.sort_order)) + 1 : 0;
         const { error } = await supabase
           .from("categories")
-          .insert({ name: catName.trim(), sort_order: maxOrder });
+          .insert({ name: catName.trim(), sort_order: maxOrder, project_name: catProjectName.trim(), app_name: catAppName.trim() });
         if (error) throw error;
         toast({ title: "הקטגוריה נוצרה" });
       }
@@ -596,6 +602,8 @@ const AdminPanel = () => {
                   <thead className="border-b border-border bg-secondary/50">
                     <tr>
                       <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">שם הפרויקט</th>
+                      <th className="px-4 py-3 font-medium text-muted-foreground">שם האפליקציה</th>
                       <th className="px-4 py-3 font-medium text-muted-foreground">גלריות</th>
                       <th className="px-4 py-3 font-medium text-muted-foreground">סדר</th>
                       <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
@@ -607,6 +615,8 @@ const AdminPanel = () => {
                       return (
                         <tr key={cat.id} className="border-b border-border last:border-0">
                           <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{cat.project_name || "—"}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{cat.app_name || "—"}</td>
                           <td className="px-4 py-3 text-muted-foreground">{galleryCount}</td>
                           <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
                           <td className="px-4 py-3">
@@ -798,9 +808,19 @@ const AdminPanel = () => {
           <DialogHeader>
             <DialogTitle>{editingCat ? "עריכת קטגוריה" : "קטגוריה חדשה"}</DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            <Label className="text-foreground">שם *</Label>
-            <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-1" />
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-foreground">שם *</Label>
+              <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <Label className="text-foreground">שם הפרויקט שיצר את התמונות</Label>
+              <Input value={catProjectName} onChange={(e) => setCatProjectName(e.target.value)} className="mt-1" placeholder="למשל: ART-AI" />
+            </div>
+            <div>
+              <Label className="text-foreground">שם האפליקציה</Label>
+              <Input value={catAppName} onChange={(e) => setCatAppName(e.target.value)} className="mt-1" placeholder="למשל: Midjourney" />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setCatDialogOpen(false)}>ביטול</Button>

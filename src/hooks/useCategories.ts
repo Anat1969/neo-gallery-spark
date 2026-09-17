@@ -5,6 +5,8 @@ export interface Category {
   id: string;
   name: string;
   sort_order: number;
+  project_name: string;
+  app_name: string;
 }
 
 export function useCategories() {
@@ -13,7 +15,7 @@ export function useCategories() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("categories")
-        .select("id, name, sort_order")
+        .select("id, name, sort_order, project_name, app_name")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
