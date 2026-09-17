@@ -40,6 +40,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 
 const slugify = (text: string) =>
