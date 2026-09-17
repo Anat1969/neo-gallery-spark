@@ -41,6 +41,9 @@ import {
   ExternalLink,
   X,
   ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
@@ -71,6 +74,44 @@ interface Artwork {
   galleryName: string;
 }
 
+type SortDirection = "asc" | "desc";
+type GallerySortKey = "name" | "category" | "artworkCount";
+type ArtworkSortKey = "imageUrl" | "title" | "galleryName";
+type CategorySortKey = "name" | "project_name" | "app_name" | "galleryCount" | "sort_order";
+
+interface SortableHeaderProps {
+  label: string;
+  active: boolean;
+  direction: SortDirection;
+  onSort: () => void;
+}
+
+const SortableHeader = ({ label, active, direction, onSort }: SortableHeaderProps) => (
+  <th scope="col" className="px-5 py-4 text-right">
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={onSort}
+      className="h-11 gap-2 px-2 text-base font-bold text-foreground hover:text-primary"
+      aria-label={`מיון לפי ${label}`}
+    >
+      {label}
+      {active ? (
+        direction === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+      ) : (
+        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+      )}
+    </Button>
+  </th>
+);
+
+const compareValues = (a: string | number, b: string | number, direction: SortDirection) => {
+  const result = typeof a === "number" && typeof b === "number"
+    ? a - b
+    : String(a).localeCompare(String(b), "he", { numeric: true, sensitivity: "base" });
+  return direction === "asc" ? result : -result;
+};
+
 const CATEGORIES_FALLBACK = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
 
 const AdminPanel = () => {
@@ -87,7 +128,11 @@ const AdminPanel = () => {
   const [catName, setCatName] = useState("");
   const [catProjectName, setCatProjectName] = useState("");
   const [catAppName, setCatAppName] = useState("");
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
+  const [gallerySort, setGallerySort] = useState<{ key: GallerySortKey; direction: SortDirection }>({ key: "name", direction: "asc" });
+  const [artworkSort, setArtworkSort] = useState<{ key: ArtworkSortKey; direction: SortDirection }>({ key: "title", direction: "asc" });
+  const [categorySort, setCategorySort] = useState<{ key: CategorySortKey; direction: SortDirection }>({ key: "sort_order", direction: "asc" });
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
     queryKey: ["admin-galleries"],
@@ -201,6 +246,7 @@ const AdminPanel = () => {
       return;
     }
 
+    setIsSavingCategory(true);
     try {
       if (editingCat) {
         const { error } = await supabase
@@ -221,6 +267,8 @@ const AdminPanel = () => {
       refresh();
     } catch (error: any) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
@@ -444,17 +492,41 @@ const AdminPanel = () => {
     [artworks, filterGalleryId],
   );
 
+  const toggleSort = <T extends string>(
+    current: { key: T; direction: SortDirection },
+    key: T,
+    setter: (next: { key: T; direction: SortDirection }) => void,
+  ) => setter({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" });
+
+  const sortedGalleries = useMemo(
+    () => [...galleries].sort((a, b) => compareValues(a[gallerySort.key], b[gallerySort.key], gallerySort.direction)),
+    [galleries, gallerySort],
+  );
+
+  const sortedArtworks = useMemo(
+    () => [...filteredArtworks].sort((a, b) => compareValues(a[artworkSort.key], b[artworkSort.key], artworkSort.direction)),
+    [filteredArtworks, artworkSort],
+  );
+
+  const sortedCategories = useMemo(() => {
+    const withCounts = categoriesData.map((category) => ({
+      ...category,
+      galleryCount: galleries.filter((gallery) => gallery.category === category.name).length,
+    }));
+    return withCounts.sort((a, b) => compareValues(a[categorySort.key] ?? "", b[categorySort.key] ?? "", categorySort.direction));
+  }, [categoriesData, galleries, categorySort]);
+
   const isEmpty = !isLoading && galleries.length === 0;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
+    <div className="min-h-screen bg-background px-4 py-8 text-base text-foreground md:px-8 lg:px-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
             <ArrowRight className="h-4 w-4" />
             חזרה
           </Button>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">ניהול</h1>
+          <h1 className="text-3xl font-bold text-foreground md:text-4xl">ניהול</h1>
         </div>
       </div>
 
@@ -472,10 +544,10 @@ const AdminPanel = () => {
 
       {!isLoading && !isEmpty && (
         <Tabs defaultValue="galleries" className="w-full">
-          <TabsList className="mb-6 bg-secondary">
-            <TabsTrigger value="galleries">גלריות</TabsTrigger>
-            <TabsTrigger value="artworks">יצירות</TabsTrigger>
-            <TabsTrigger value="categories">קטגוריות</TabsTrigger>
+          <TabsList className="mb-6 h-12 bg-secondary p-1">
+            <TabsTrigger value="galleries" className="h-10 px-5 text-base font-semibold">גלריות</TabsTrigger>
+            <TabsTrigger value="artworks" className="h-10 px-5 text-base font-semibold">יצירות</TabsTrigger>
+            <TabsTrigger value="categories" className="h-10 px-5 text-base font-semibold">קטגוריות</TabsTrigger>
           </TabsList>
 
           <TabsContent value="galleries">
@@ -487,21 +559,21 @@ const AdminPanel = () => {
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="w-full text-right text-sm">
-                <thead className="border-b border-border bg-secondary/50">
+                <table className="w-full min-w-[680px] text-right text-base">
+                <thead className="border-b border-border bg-secondary">
                   <tr>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">קטגוריה</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">יצירות</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
+                    <SortableHeader label="שם" active={gallerySort.key === "name"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "name", setGallerySort)} />
+                    <SortableHeader label="קטגוריה" active={gallerySort.key === "category"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "category", setGallerySort)} />
+                    <SortableHeader label="יצירות" active={gallerySort.key === "artworkCount"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "artworkCount", setGallerySort)} />
+                    <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {galleries.map((g) => (
+                  {sortedGalleries.map((g) => (
                     <tr key={g.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-medium text-foreground">{g.name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{g.category}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{g.artworkCount}</td>
+                       <td className="px-5 py-4 font-semibold text-foreground">{g.name}</td>
+                       <td className="px-5 py-4 text-foreground">{g.category}</td>
+                       <td className="px-5 py-4 text-foreground">{g.artworkCount}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
                           <button onClick={() => openEditGallery(g)} title="עריכת פרטי הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
@@ -547,17 +619,17 @@ const AdminPanel = () => {
               <p className="py-12 text-center text-muted-foreground">אין יצירות להצגה</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-right text-sm">
-                  <thead className="border-b border-border bg-secondary/50">
+                <table className="w-full min-w-[680px] text-right text-base">
+                  <thead className="border-b border-border bg-secondary">
                     <tr>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">תמונה</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">גלריה</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
+                      <SortableHeader label="תמונה" active={artworkSort.key === "imageUrl"} direction={artworkSort.direction} onSort={() => toggleSort(artworkSort, "imageUrl", setArtworkSort)} />
+                      <SortableHeader label="שם" active={artworkSort.key === "title"} direction={artworkSort.direction} onSort={() => toggleSort(artworkSort, "title", setArtworkSort)} />
+                      <SortableHeader label="גלריה" active={artworkSort.key === "galleryName"} direction={artworkSort.direction} onSort={() => toggleSort(artworkSort, "galleryName", setArtworkSort)} />
+                      <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredArtworks.map((a) => (
+                    {sortedArtworks.map((a) => (
                       <tr key={a.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-3">
                           {a.imageUrl ? (
@@ -566,8 +638,8 @@ const AdminPanel = () => {
                             <div className="h-10 w-10 rounded bg-secondary" />
                           )}
                         </td>
-                        <td className="px-4 py-3 font-medium text-foreground">{a.title}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{a.galleryName}</td>
+                        <td className="px-5 py-4 font-semibold text-foreground">{a.title}</td>
+                        <td className="px-5 py-4 text-foreground">{a.galleryName}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
                             <button onClick={() => openEditArtwork(a)} title="עריכת פרטי היצירה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
@@ -598,27 +670,26 @@ const AdminPanel = () => {
               <p className="py-12 text-center text-muted-foreground">אין קטגוריות עדיין</p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-right text-sm">
-                  <thead className="border-b border-border bg-secondary/50">
+                <table className="w-full min-w-[900px] text-right text-base">
+                  <thead className="border-b border-border bg-secondary">
                     <tr>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">שם</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">שם הפרויקט</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">שם האפליקציה</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">גלריות</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">סדר</th>
-                      <th className="px-4 py-3 font-medium text-muted-foreground">פעולות</th>
+                      <SortableHeader label="שם" active={categorySort.key === "name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "name", setCategorySort)} />
+                      <SortableHeader label="שם הפרויקט" active={categorySort.key === "project_name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "project_name", setCategorySort)} />
+                      <SortableHeader label="שם האפליקציה" active={categorySort.key === "app_name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "app_name", setCategorySort)} />
+                      <SortableHeader label="גלריות" active={categorySort.key === "galleryCount"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "galleryCount", setCategorySort)} />
+                      <SortableHeader label="סדר" active={categorySort.key === "sort_order"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "sort_order", setCategorySort)} />
+                      <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {categoriesData.map((cat) => {
-                      const galleryCount = galleries.filter((g) => g.category === cat.name).length;
+                    {sortedCategories.map((cat) => {
                       return (
                         <tr key={cat.id} className="border-b border-border last:border-0">
-                          <td className="px-4 py-3 font-medium text-foreground">{cat.name}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{cat.project_name || "—"}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{cat.app_name || "—"}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{galleryCount}</td>
-                          <td className="px-4 py-3 text-muted-foreground">{cat.sort_order}</td>
+                          <td className="px-5 py-4 font-semibold text-foreground">{cat.name}</td>
+                          <td className="px-5 py-4 text-foreground">{cat.project_name || "—"}</td>
+                          <td className="px-5 py-4 text-foreground">{cat.app_name || "—"}</td>
+                          <td className="px-5 py-4 text-foreground">{cat.galleryCount}</td>
+                          <td className="px-5 py-4 text-foreground">{cat.sort_order}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1">
                               <button onClick={() => openEditCategory(cat)} title="עריכת שם הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
@@ -804,28 +875,28 @@ const AdminPanel = () => {
 
       {/* Category dialog */}
       <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
-        <DialogContent className="border-border bg-card text-foreground sm:max-w-sm" dir="rtl">
+        <DialogContent className="border-border bg-card text-foreground sm:max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>{editingCat ? "עריכת קטגוריה" : "קטגוריה חדשה"}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <form className="space-y-5 py-2" onSubmit={(event) => { event.preventDefault(); void saveCategory(); }}>
             <div>
-              <Label className="text-foreground">שם *</Label>
-              <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-1" />
+              <Label className="text-base font-semibold text-foreground">שם *</Label>
+              <Input value={catName} onChange={(e) => setCatName(e.target.value)} className="mt-2 h-12 text-base" autoFocus />
             </div>
             <div>
-              <Label className="text-foreground">שם הפרויקט שיצר את התמונות</Label>
-              <Input value={catProjectName} onChange={(e) => setCatProjectName(e.target.value)} className="mt-1" placeholder="למשל: ART-AI" />
+              <Label className="text-base font-semibold text-foreground">שם הפרויקט שיצר את התמונות</Label>
+              <Input value={catProjectName} onChange={(e) => setCatProjectName(e.target.value)} className="mt-2 h-12 text-base" placeholder="למשל: ART-AI" />
             </div>
             <div>
-              <Label className="text-foreground">שם האפליקציה</Label>
-              <Input value={catAppName} onChange={(e) => setCatAppName(e.target.value)} className="mt-1" placeholder="למשל: Midjourney" />
+              <Label className="text-base font-semibold text-foreground">שם האפליקציה</Label>
+              <Input value={catAppName} onChange={(e) => setCatAppName(e.target.value)} className="mt-2 h-12 text-base" placeholder="למשל: Midjourney" />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setCatDialogOpen(false)}>ביטול</Button>
-            <Button onClick={saveCategory}>{editingCat ? "שמירה" : "יצירה"}</Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setCatDialogOpen(false)}>ביטול</Button>
+              <Button type="submit" disabled={isSavingCategory}>{isSavingCategory ? "שומרת..." : editingCat ? "שמירה" : "יצירה"}</Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

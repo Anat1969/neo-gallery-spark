@@ -8,6 +8,13 @@
       "when": 1789638964216,
       "tag": "0000_add_category_project_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789639689888,
+      "tag": "0001_grant_category_data_access",
+      "breakpoints": true
     }
   ]
 }
