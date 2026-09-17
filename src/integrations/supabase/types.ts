@@ -78,21 +78,27 @@ export type Database = {
       }
       categories: {
         Row: {
+          app_name: string | null
           created_at: string
           id: string
           name: string
+          project_name: string | null
           sort_order: number
         }
         Insert: {
+          app_name?: string | null
           created_at?: string
           id?: string
           name: string
+          project_name?: string | null
           sort_order?: number
         }
         Update: {
+          app_name?: string | null
           created_at?: string
           id?: string
           name?: string
+          project_name?: string | null
           sort_order?: number
         }
         Relationships: []
