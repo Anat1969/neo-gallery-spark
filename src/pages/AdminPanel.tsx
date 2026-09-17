@@ -44,6 +44,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Search,
 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
@@ -57,6 +58,8 @@ interface Gallery {
   coverImage: string;
   artworkCount: number;
   sortOrder: number;
+  projectName: string;
+  appName: string;
 }
 
 interface Artwork {
@@ -75,7 +78,7 @@ interface Artwork {
 }
 
 type SortDirection = "asc" | "desc";
-type GallerySortKey = "name" | "category" | "artworkCount";
+type GallerySortKey = "name" | "category" | "projectName" | "appName" | "artworkCount";
 type ArtworkSortKey = "imageUrl" | "title" | "galleryName";
 type CategorySortKey = "name" | "project_name" | "app_name" | "galleryCount" | "sort_order";
 
@@ -133,13 +136,15 @@ const AdminPanel = () => {
   const [gallerySort, setGallerySort] = useState<{ key: GallerySortKey; direction: SortDirection }>({ key: "name", direction: "asc" });
   const [artworkSort, setArtworkSort] = useState<{ key: ArtworkSortKey; direction: SortDirection }>({ key: "title", direction: "asc" });
   const [categorySort, setCategorySort] = useState<{ key: CategorySortKey; direction: SortDirection }>({ key: "sort_order", direction: "asc" });
+  const [gallerySearch, setGallerySearch] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
     queryKey: ["admin-galleries"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("galleries")
-        .select("id, name, slug, description, category, cover_image, sort_order, artworks(count)")
+        .select("id, name, slug, description, category, cover_image, sort_order, project_name, app_name, artworks(count)")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
@@ -153,6 +158,8 @@ const AdminPanel = () => {
         coverImage: row.cover_image ?? "",
         sortOrder: row.sort_order ?? 0,
         artworkCount: row.artworks?.[0]?.count ?? 0,
+        projectName: row.project_name ?? "",
+        appName: row.app_name ?? "",
       })) as Gallery[];
     },
   });
@@ -193,6 +200,8 @@ const AdminPanel = () => {
     description: "",
     category: "",
     coverImage: "",
+    projectName: "",
+    appName: "",
   });
 
   const [artworkDialogOpen, setArtworkDialogOpen] = useState(false);
@@ -285,7 +294,7 @@ const AdminPanel = () => {
 
   const openNewGallery = () => {
     setEditingGallery(null);
-    setGForm({ name: "", description: "", category: "", coverImage: "" });
+    setGForm({ name: "", description: "", category: "", coverImage: "", projectName: "", appName: "" });
     setGalleryDialogOpen(true);
   };
 
@@ -296,6 +305,8 @@ const AdminPanel = () => {
       description: g.description,
       category: g.category,
       coverImage: g.coverImage,
+      projectName: g.projectName,
+      appName: g.appName,
     });
     setGalleryDialogOpen(true);
   };
@@ -327,6 +338,8 @@ const AdminPanel = () => {
             description: gForm.description,
             category: gForm.category,
             cover_image: gForm.coverImage,
+            project_name: gForm.projectName.trim(),
+            app_name: gForm.appName.trim(),
           })
           .eq("id", editingGallery.id);
 
@@ -346,6 +359,8 @@ const AdminPanel = () => {
           description: gForm.description,
           category: gForm.category,
           cover_image: gForm.coverImage,
+          project_name: gForm.projectName.trim(),
+          app_name: gForm.appName.trim(),
           sort_order: (maxRow?.sort_order ?? -1) + 1,
           created_by: user?.id ?? null,
         });
@@ -499,8 +514,14 @@ const AdminPanel = () => {
   ) => setter({ key, direction: current.key === key && current.direction === "asc" ? "desc" : "asc" });
 
   const sortedGalleries = useMemo(
-    () => [...galleries].sort((a, b) => compareValues(a[gallerySort.key], b[gallerySort.key], gallerySort.direction)),
-    [galleries, gallerySort],
+    () => galleries
+      .filter((gallery) => {
+        const query = gallerySearch.trim().toLocaleLowerCase("he");
+        return !query || [gallery.name, gallery.category, gallery.projectName, gallery.appName]
+          .some((value) => value.toLocaleLowerCase("he").includes(query));
+      })
+      .sort((a, b) => compareValues(a[gallerySort.key], b[gallerySort.key], gallerySort.direction)),
+    [galleries, gallerySearch, gallerySort],
   );
 
   const sortedArtworks = useMemo(
@@ -513,8 +534,12 @@ const AdminPanel = () => {
       ...category,
       galleryCount: galleries.filter((gallery) => gallery.category === category.name).length,
     }));
-    return withCounts.sort((a, b) => compareValues(a[categorySort.key] ?? "", b[categorySort.key] ?? "", categorySort.direction));
-  }, [categoriesData, galleries, categorySort]);
+    const query = categorySearch.trim().toLocaleLowerCase("he");
+    return withCounts
+      .filter((category) => !query || [category.name, category.project_name ?? "", category.app_name ?? ""]
+        .some((value) => value.toLocaleLowerCase("he").includes(query)))
+      .sort((a, b) => compareValues(a[categorySort.key] ?? "", b[categorySort.key] ?? "", categorySort.direction));
+  }, [categoriesData, galleries, categorySearch, categorySort]);
 
   const isEmpty = !isLoading && galleries.length === 0;
 
@@ -551,7 +576,11 @@ const AdminPanel = () => {
           </TabsList>
 
           <TabsContent value="galleries">
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input value={gallerySearch} onChange={(event) => setGallerySearch(event.target.value)} placeholder="חיפוש גלריה, קטגוריה, פרויקט או אפליקציה" className="h-12 pr-11 text-base" />
+              </div>
               <Button onClick={openNewGallery} className="gap-2">
                 <Plus className="h-4 w-4" />
                 גלריה חדשה
@@ -559,11 +588,13 @@ const AdminPanel = () => {
             </div>
 
             <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full min-w-[680px] text-right text-base">
+                <table className="w-full min-w-[980px] text-right text-base">
                 <thead className="border-b border-border bg-secondary">
                   <tr>
                     <SortableHeader label="שם" active={gallerySort.key === "name"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "name", setGallerySort)} />
                     <SortableHeader label="קטגוריה" active={gallerySort.key === "category"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "category", setGallerySort)} />
+                    <SortableHeader label="שם הפרויקט" active={gallerySort.key === "projectName"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "projectName", setGallerySort)} />
+                    <SortableHeader label="שם האפליקציה" active={gallerySort.key === "appName"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "appName", setGallerySort)} />
                     <SortableHeader label="יצירות" active={gallerySort.key === "artworkCount"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "artworkCount", setGallerySort)} />
                     <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
                   </tr>
@@ -573,6 +604,8 @@ const AdminPanel = () => {
                     <tr key={g.id} className="border-b border-border last:border-0">
                        <td className="px-5 py-4 font-semibold text-foreground">{g.name}</td>
                        <td className="px-5 py-4 text-foreground">{g.category}</td>
+                       <td className="px-5 py-4 text-foreground">{g.projectName || "—"}</td>
+                       <td className="px-5 py-4 text-foreground">{g.appName || "—"}</td>
                        <td className="px-5 py-4 text-foreground">{g.artworkCount}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
@@ -659,7 +692,11 @@ const AdminPanel = () => {
           </TabsContent>
 
           <TabsContent value="categories">
-            <div className="mb-4 flex justify-end">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                <Input value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} placeholder="חיפוש קטגוריה, פרויקט או אפליקציה" className="h-12 pr-11 text-base" />
+              </div>
               <Button onClick={openNewCategory} className="gap-2" title="הוספת קטגוריה חדשה למערכת">
                 <Plus className="h-4 w-4" />
                 קטגוריה חדשה
@@ -692,7 +729,7 @@ const AdminPanel = () => {
                           <td className="px-5 py-4 text-foreground">{cat.sort_order}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1">
-                              <button onClick={() => openEditCategory(cat)} title="עריכת שם הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
+                              <button onClick={() => openEditCategory(cat)} title="עריכת הקטגוריה, הפרויקט והאפליקציה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                                 <Pencil className="h-4 w-4" />
                               </button>
                               <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} title="מחיקת הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
@@ -739,6 +776,14 @@ const AdminPanel = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="text-base font-semibold text-foreground">שם הפרויקט שיצר את התמונות</Label>
+              <Input value={gForm.projectName} onChange={(e) => setGForm((p) => ({ ...p, projectName: e.target.value }))} className="mt-2 h-12 text-base" />
+            </div>
+            <div>
+              <Label className="text-base font-semibold text-foreground">שם האפליקציה</Label>
+              <Input value={gForm.appName} onChange={(e) => setGForm((p) => ({ ...p, appName: e.target.value }))} className="mt-2 h-12 text-base" />
             </div>
             <div>
               <Label className="text-foreground">תמונת כיסוי</Label>
