@@ -39,6 +39,7 @@ import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
 import InlineEdit from "@/components/InlineEdit";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import { slugify, uniqueSlug, friendlyDbError } from "@/lib/slug";
 
 interface GalleryItem {
