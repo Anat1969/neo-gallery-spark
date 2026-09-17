@@ -85,6 +85,8 @@ const AdminPanel = () => {
   const [catDialogOpen, setCatDialogOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<{ id: string; name: string; sort_order: number } | null>(null);
   const [catName, setCatName] = useState("");
+  const [catProjectName, setCatProjectName] = useState("");
+  const [catAppName, setCatAppName] = useState("");
   const [deleteCatTarget, setDeleteCatTarget] = useState<{ id: string; name: string } | null>(null);
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
