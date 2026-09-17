@@ -45,6 +45,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   Search,
+  Save,
 } from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
@@ -138,6 +139,9 @@ const AdminPanel = () => {
   const [categorySort, setCategorySort] = useState<{ key: CategorySortKey; direction: SortDirection }>({ key: "sort_order", direction: "asc" });
   const [gallerySearch, setGallerySearch] = useState("");
   const [categorySearch, setCategorySearch] = useState("");
+  const [galleryMetadataDrafts, setGalleryMetadataDrafts] = useState<Record<string, { projectName: string; appName: string }>>({});
+  const [categoryMetadataDrafts, setCategoryMetadataDrafts] = useState<Record<string, { projectName: string; appName: string }>>({});
+  const [savingMetadataId, setSavingMetadataId] = useState<string | null>(null);
 
   const { data: galleries = [], isLoading: galleriesLoading } = useQuery({
     queryKey: ["admin-galleries"],
@@ -292,6 +296,32 @@ const AdminPanel = () => {
     refresh();
   };
 
+  const saveCategoryMetadata = async (category: { id: string; project_name?: string; app_name?: string }) => {
+    const draft = categoryMetadataDrafts[category.id] ?? {
+      projectName: category.project_name ?? "",
+      appName: category.app_name ?? "",
+    };
+    setSavingMetadataId(`category-${category.id}`);
+    try {
+      const { error } = await supabase
+        .from("categories")
+        .update({ project_name: draft.projectName.trim(), app_name: draft.appName.trim() })
+        .eq("id", category.id);
+      if (error) throw error;
+      setCategoryMetadataDrafts((current) => {
+        const next = { ...current };
+        delete next[category.id];
+        return next;
+      });
+      toast({ title: "פרטי הקטגוריה נשמרו" });
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
+    } finally {
+      setSavingMetadataId(null);
+    }
+  };
+
   const openNewGallery = () => {
     setEditingGallery(null);
     setGForm({ name: "", description: "", category: "", coverImage: "", projectName: "", appName: "" });
@@ -373,6 +403,32 @@ const AdminPanel = () => {
       refresh();
     } catch (error: any) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
+    }
+  };
+
+  const saveGalleryMetadata = async (gallery: Gallery) => {
+    const draft = galleryMetadataDrafts[gallery.id] ?? {
+      projectName: gallery.projectName,
+      appName: gallery.appName,
+    };
+    setSavingMetadataId(`gallery-${gallery.id}`);
+    try {
+      const { error } = await supabase
+        .from("galleries")
+        .update({ project_name: draft.projectName.trim(), app_name: draft.appName.trim() })
+        .eq("id", gallery.id);
+      if (error) throw error;
+      setGalleryMetadataDrafts((current) => {
+        const next = { ...current };
+        delete next[gallery.id];
+        return next;
+      });
+      toast({ title: "פרטי הגלריה נשמרו" });
+      refresh();
+    } catch (error: any) {
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
+    } finally {
+      setSavingMetadataId(null);
     }
   };
 
@@ -604,11 +660,51 @@ const AdminPanel = () => {
                     <tr key={g.id} className="border-b border-border last:border-0">
                        <td className="px-5 py-4 font-semibold text-foreground">{g.name}</td>
                        <td className="px-5 py-4 text-foreground">{g.category}</td>
-                       <td className="px-5 py-4 text-foreground">{g.projectName || "—"}</td>
-                       <td className="px-5 py-4 text-foreground">{g.appName || "—"}</td>
+                       <td className="px-3 py-3">
+                         <Input
+                           value={galleryMetadataDrafts[g.id]?.projectName ?? g.projectName}
+                           onChange={(event) => setGalleryMetadataDrafts((current) => ({
+                             ...current,
+                             [g.id]: {
+                               projectName: event.target.value,
+                               appName: current[g.id]?.appName ?? g.appName,
+                             },
+                           }))}
+                           placeholder="הקלידי שם פרויקט"
+                           aria-label={`שם הפרויקט של ${g.name}`}
+                           className="h-11 min-w-44 bg-background text-base"
+                         />
+                       </td>
+                       <td className="px-3 py-3">
+                         <Input
+                           value={galleryMetadataDrafts[g.id]?.appName ?? g.appName}
+                           onChange={(event) => setGalleryMetadataDrafts((current) => ({
+                             ...current,
+                             [g.id]: {
+                               projectName: current[g.id]?.projectName ?? g.projectName,
+                               appName: event.target.value,
+                             },
+                           }))}
+                           placeholder="הקלידי שם אפליקציה"
+                           aria-label={`שם האפליקציה של ${g.name}`}
+                           className="h-11 min-w-44 bg-background text-base"
+                         />
+                       </td>
                        <td className="px-5 py-4 text-foreground">{g.artworkCount}</td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
+                           <Button
+                             type="button"
+                             size="icon"
+                             variant="ghost"
+                             onClick={() => void saveGalleryMetadata(g)}
+                             disabled={!galleryMetadataDrafts[g.id] || savingMetadataId === `gallery-${g.id}`}
+                             title="שמירת שם הפרויקט ושם האפליקציה"
+                             aria-label={`שמירת פרטי ${g.name}`}
+                             className="h-9 w-9 text-muted-foreground hover:text-primary"
+                           >
+                             <Save className="h-4 w-4" />
+                           </Button>
                           <button onClick={() => openEditGallery(g)} title="עריכת פרטי הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -723,12 +819,52 @@ const AdminPanel = () => {
                       return (
                         <tr key={cat.id} className="border-b border-border last:border-0">
                           <td className="px-5 py-4 font-semibold text-foreground">{cat.name}</td>
-                          <td className="px-5 py-4 text-foreground">{cat.project_name || "—"}</td>
-                          <td className="px-5 py-4 text-foreground">{cat.app_name || "—"}</td>
+                          <td className="px-3 py-3">
+                            <Input
+                              value={categoryMetadataDrafts[cat.id]?.projectName ?? cat.project_name ?? ""}
+                              onChange={(event) => setCategoryMetadataDrafts((current) => ({
+                                ...current,
+                                [cat.id]: {
+                                  projectName: event.target.value,
+                                  appName: current[cat.id]?.appName ?? cat.app_name ?? "",
+                                },
+                              }))}
+                              placeholder="הקלידי שם פרויקט"
+                              aria-label={`שם הפרויקט של ${cat.name}`}
+                              className="h-11 min-w-44 bg-background text-base"
+                            />
+                          </td>
+                          <td className="px-3 py-3">
+                            <Input
+                              value={categoryMetadataDrafts[cat.id]?.appName ?? cat.app_name ?? ""}
+                              onChange={(event) => setCategoryMetadataDrafts((current) => ({
+                                ...current,
+                                [cat.id]: {
+                                  projectName: current[cat.id]?.projectName ?? cat.project_name ?? "",
+                                  appName: event.target.value,
+                                },
+                              }))}
+                              placeholder="הקלידי שם אפליקציה"
+                              aria-label={`שם האפליקציה של ${cat.name}`}
+                              className="h-11 min-w-44 bg-background text-base"
+                            />
+                          </td>
                           <td className="px-5 py-4 text-foreground">{cat.galleryCount}</td>
                           <td className="px-5 py-4 text-foreground">{cat.sort_order}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-1">
+                              <Button
+                                type="button"
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => void saveCategoryMetadata(cat)}
+                                disabled={!categoryMetadataDrafts[cat.id] || savingMetadataId === `category-${cat.id}`}
+                                title="שמירת שם הפרויקט ושם האפליקציה"
+                                aria-label={`שמירת פרטי ${cat.name}`}
+                                className="h-9 w-9 text-muted-foreground hover:text-primary"
+                              >
+                                <Save className="h-4 w-4" />
+                              </Button>
                               <button onClick={() => openEditCategory(cat)} title="עריכת הקטגוריה, הפרויקט והאפליקציה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
                                 <Pencil className="h-4 w-4" />
                               </button>
