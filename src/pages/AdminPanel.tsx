@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { slugify, uniqueSlug, friendlyDbError } from "@/lib/slug";
 import {
   Plus,
   Pencil,
@@ -71,13 +72,6 @@ interface Artwork {
 }
 
 const CATEGORIES_FALLBACK = ["אופנה", "פנים", "אדריכלות", "כלים", "אומנות", "פיסול", "צילום"];
-
-const slugify = (text: string) =>
-  text
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\u0590-\u05FF\s-]/g, "")
-    .replace(/[\s]+/g, "-");
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -149,7 +143,6 @@ const AdminPanel = () => {
   const [editingGallery, setEditingGallery] = useState<Gallery | null>(null);
   const [gForm, setGForm] = useState({
     name: "",
-    slug: "",
     description: "",
     category: "",
     coverImage: "",
@@ -221,14 +214,14 @@ const AdminPanel = () => {
       setCatDialogOpen(false);
       refresh();
     } catch (error: any) {
-      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
     }
   };
 
   const deleteCategory = async (id: string) => {
     const { error } = await supabase.from("categories").delete().eq("id", id);
     if (error) {
-      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
     }
     toast({ title: "הקטגוריה נמחקה" });
@@ -238,7 +231,7 @@ const AdminPanel = () => {
 
   const openNewGallery = () => {
     setEditingGallery(null);
-    setGForm({ name: "", slug: "", description: "", category: "", coverImage: "" });
+    setGForm({ name: "", description: "", category: "", coverImage: "" });
     setGalleryDialogOpen(true);
   };
 
@@ -246,7 +239,6 @@ const AdminPanel = () => {
     setEditingGallery(g);
     setGForm({
       name: g.name,
-      slug: g.slug,
       description: g.description,
       category: g.category,
       coverImage: g.coverImage,
@@ -260,7 +252,16 @@ const AdminPanel = () => {
       return;
     }
 
-    const normalizedSlug = (gForm.slug || slugify(gForm.name)).trim();
+    const baseSlug = slugify(gForm.name);
+    if (!baseSlug) {
+      toast({ title: "שגיאה", description: "השם חייב להכיל אותיות או מספרים", variant: "destructive" });
+      return;
+    }
+
+    const takenSlugs = new Set(
+      galleries.filter((g) => g.id !== editingGallery?.id).map((g) => g.slug),
+    );
+    const normalizedSlug = uniqueSlug(baseSlug, takenSlugs);
 
     try {
       if (editingGallery) {
@@ -302,7 +303,7 @@ const AdminPanel = () => {
       setGalleryDialogOpen(false);
       refresh();
     } catch (error: any) {
-      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
     }
   };
 
@@ -310,7 +311,7 @@ const AdminPanel = () => {
     const { error } = await supabase.from("galleries").delete().eq("id", id);
 
     if (error) {
-      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
     }
 
@@ -403,7 +404,7 @@ const AdminPanel = () => {
       setArtworkDialogOpen(false);
       refresh();
     } catch (error: any) {
-      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
     }
   };
 
@@ -411,7 +412,7 @@ const AdminPanel = () => {
     const { error } = await supabase.from("artworks").delete().eq("id", id);
 
     if (error) {
-      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
     }
 
@@ -637,11 +638,7 @@ const AdminPanel = () => {
           <div className="space-y-4 py-2">
             <div>
               <Label className="text-foreground">שם *</Label>
-              <Input value={gForm.name} onChange={(e) => setGForm((p) => ({ ...p, name: e.target.value, slug: p.slug || slugify(e.target.value) }))} className="mt-1" />
-            </div>
-            <div>
-              <Label className="text-foreground">Slug</Label>
-              <Input value={gForm.slug} onChange={(e) => setGForm((p) => ({ ...p, slug: e.target.value }))} dir="ltr" className="mt-1 text-left" />
+              <Input value={gForm.name} onChange={(e) => setGForm((p) => ({ ...p, name: e.target.value }))} className="mt-1" />
             </div>
             <div>
               <Label className="text-foreground">תיאור</Label>
