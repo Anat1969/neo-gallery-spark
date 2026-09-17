@@ -39,6 +39,7 @@ import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
 import InlineEdit from "@/components/InlineEdit";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { slugify, uniqueSlug, friendlyDbError } from "@/lib/slug";
 
 interface GalleryItem {
   id: string;
@@ -50,13 +51,6 @@ interface GalleryItem {
   sort_order: number;
   artworkCount: number;
 }
-
-const slugify = (text: string) =>
-  text
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\u0590-\u05FF\s-]/g, "")
-    .replace(/[\s]+/g, "-");
 
 const GalleryGrid = () => {
   const navigate = useNavigate();
@@ -79,7 +73,6 @@ const GalleryGrid = () => {
 
   const [form, setForm] = useState({
     name: "",
-    slug: "",
     description: "",
     category: "",
     cover_image: "",
@@ -116,7 +109,7 @@ const GalleryGrid = () => {
 
   const openNewGallery = () => {
     setEditingGallery(null);
-    setForm({ name: "", slug: "", description: "", category: "", cover_image: "" });
+    setForm({ name: "", description: "", category: "", cover_image: "" });
     setFormOpen(true);
   };
 
@@ -124,7 +117,6 @@ const GalleryGrid = () => {
     setEditingGallery(gallery);
     setForm({
       name: gallery.name,
-      slug: gallery.slug,
       description: gallery.description ?? "",
       category: gallery.category,
       cover_image: gallery.cover_image ?? "",
@@ -138,11 +130,16 @@ const GalleryGrid = () => {
       return;
     }
 
-    const normalizedSlug = (form.slug || slugify(form.name)).trim();
-    if (!normalizedSlug) {
-      toast({ title: "שגיאה", description: "slug לא תקין", variant: "destructive" });
+    const baseSlug = slugify(form.name);
+    if (!baseSlug) {
+      toast({ title: "שגיאה", description: "השם חייב להכיל אותיות או מספרים", variant: "destructive" });
       return;
     }
+
+    const takenSlugs = new Set(
+      galleries.filter((g) => g.id !== editingGallery?.id).map((g) => g.slug),
+    );
+    const normalizedSlug = uniqueSlug(baseSlug, takenSlugs);
 
     setSaving(true);
 
@@ -188,7 +185,7 @@ const GalleryGrid = () => {
       setFormOpen(false);
       refresh();
     } catch (error: any) {
-      toast({ title: "שגיאה", description: error.message ?? "הפעולה נכשלה", variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -199,7 +196,7 @@ const GalleryGrid = () => {
 
     const { error } = await supabase.from("galleries").delete().eq("id", deleteTarget.id);
     if (error) {
-      toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
     }
 
@@ -391,23 +388,8 @@ const GalleryGrid = () => {
               <Label>שם *</Label>
               <Input
                 value={form.name}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                    slug: editingGallery ? prev.slug : slugify(e.target.value),
-                  }))
-                }
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 className="mt-1"
-              />
-            </div>
-            <div>
-              <Label>Slug</Label>
-              <Input
-                value={form.slug}
-                onChange={(e) => setForm((prev) => ({ ...prev, slug: e.target.value }))}
-                dir="ltr"
-                className="mt-1 text-left"
               />
             </div>
             <div>
