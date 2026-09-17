@@ -15,6 +15,13 @@
       "when": 1789639689888,
       "tag": "0001_grant_category_data_access",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789642643107,
+      "tag": "0002_add_gallery_project_fields",
+      "breakpoints": true
     }
   ]
 }

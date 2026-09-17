@@ -134,6 +134,7 @@ export type Database = {
       }
       galleries: {
         Row: {
+          app_name: string | null
           category: string
           cover_image: string | null
           created_at: string
@@ -141,11 +142,13 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          project_name: string | null
           slug: string
           sort_order: number
           updated_at: string
         }
         Insert: {
+          app_name?: string | null
           category: string
           cover_image?: string | null
           created_at?: string
@@ -153,11 +156,13 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          project_name?: string | null
           slug: string
           sort_order?: number
           updated_at?: string
         }
         Update: {
+          app_name?: string | null
           category?: string
           cover_image?: string | null
           created_at?: string
@@ -165,6 +170,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          project_name?: string | null
           slug?: string
           sort_order?: number
           updated_at?: string
