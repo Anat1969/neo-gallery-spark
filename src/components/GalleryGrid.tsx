@@ -39,6 +39,7 @@ import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
 import InlineEdit from "@/components/InlineEdit";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import { slugify, uniqueSlug, friendlyDbError } from "@/lib/slug";
 
 interface GalleryItem {
@@ -208,10 +209,7 @@ const GalleryGrid = () => {
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12" dir="rtl">
       <PageBreadcrumb
-        crumbs={[
-          { label: "קטגוריות", to: "/" },
-          ...(activeCategory !== "הכל" ? [{ label: activeCategory }] : []),
-        ]}
+        crumbs={buildCrumbs({ category: activeCategory !== "הכל" ? activeCategory : null })}
       />
 
       {/* Section: Categories */}

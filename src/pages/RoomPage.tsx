@@ -19,6 +19,7 @@ import {
 import { ImageIcon, Plus, Pencil, Trash2, GripVertical, Heart, FolderMinus } from "lucide-react";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 
 const RoomPage = () => {
@@ -198,11 +199,11 @@ const RoomPage = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12" dir="rtl">
-      <PageBreadcrumb crumbs={[
-        { label: "גלריות", to: "/" },
-        { label: gallery?.name ?? "...", to: `/gallery/${gallerySlug}` },
-        { label: room?.name ?? "..." },
-      ]} />
+      <PageBreadcrumb crumbs={buildCrumbs({
+        category: (gallery as any)?.category,
+        gallery: { name: gallery?.name ?? "...", slug: gallerySlug },
+        room: { name: room?.name ?? "..." },
+      })} />
 
       <div className="mt-4" />
 

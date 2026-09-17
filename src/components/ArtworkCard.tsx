@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import ShareExport from "@/components/ShareExport";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import { buildCrumbs } from "@/lib/breadcrumbs";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -124,18 +125,11 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
         ) : (
           <PageBreadcrumb
             sticky={false}
-            crumbs={[
-              ...((artwork?.gallery as any)?.category
-                ? [{
-                    label: (artwork!.gallery as any).category,
-                    to: `/?category=${encodeURIComponent((artwork!.gallery as any).category)}`,
-                  }]
-                : [{ label: "גלריות", to: "/" }]),
-              ...(artwork?.gallery
-                ? [{ label: (artwork.gallery as any).name, to: `/gallery/${(artwork.gallery as any).slug}` }]
-                : []),
-              { label: artwork?.title ?? "..." },
-            ]}
+            crumbs={buildCrumbs({
+              category: (artwork?.gallery as any)?.category,
+              gallery: artwork?.gallery as any,
+              artworkTitle: artwork?.title ?? "...",
+            })}
           />
         )}
 
