@@ -205,7 +205,7 @@ const AdminPanel = () => {
       if (editingCat) {
         const { error } = await supabase
           .from("categories")
-          .update({ name: catName.trim() })
+          .update({ name: catName.trim(), project_name: catProjectName.trim(), app_name: catAppName.trim() })
           .eq("id", editingCat.id);
         if (error) throw error;
         toast({ title: "הקטגוריה עודכנה" });
@@ -213,7 +213,7 @@ const AdminPanel = () => {
         const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map((c) => c.sort_order)) + 1 : 0;
         const { error } = await supabase
           .from("categories")
-          .insert({ name: catName.trim(), sort_order: maxOrder });
+          .insert({ name: catName.trim(), sort_order: maxOrder, project_name: catProjectName.trim(), app_name: catAppName.trim() });
         if (error) throw error;
         toast({ title: "הקטגוריה נוצרה" });
       }
