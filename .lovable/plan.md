@@ -32,10 +32,10 @@
 ## פרטים טכניים
 
 - קובץ חדש `src/lib/slug.ts`: `slugify` (הלוגיקה הקיימת, מרוכזת), `uniqueSlug(base, taken)` עם סיומת `-2/-3`, ו־`friendlyDbError(error)` שממפה קוד Postgres `23505` להודעה בעברית.
-- `src/components/GalleryGrid.tsx`: הסרת שדה Slug (שורות ~404-412), הסרת `slug` מ־state הטופס, וייצור הכתובת ב־`handleSaveGallery` מתוך `galleries` הטעון (ללא השורה הנערכת) עם `uniqueSlug`.
+- `src/components/GalleryGrid.tsx`: הסרת שדה Slug (שורות ~404-412), הסרת `slug` ממצב הטופס, וייצור הכתובת ב־`handleSaveGallery` מתוך רשימת `galleries` הטעונה (ללא השורה הנערכת) עם `uniqueSlug`.
 - `src/pages/AdminPanel.tsx`: אותו דבר ב־`saveGallery` (שורות ~263-296) ובהסרת שדה Slug מהטופס (שורות ~640-645).
 - תיקון הנתונים דרך `run_sql` (לא migration), בשני שלבים בתוך עסקה אחת כדי למנוע התנגשות ביניים:
   1. `UPDATE public.galleries SET slug = 'tmp-' || id::text;`
   2. עדכון הכתובת הנגזרת מהשם עם `row_number() OVER (PARTITION BY base ORDER BY sort_order)` כך שכל היעדים שונים זה מזה.
   3. אימות: `SELECT slug, count(*) FROM public.galleries GROUP BY slug HAVING count(*) > 1;` (צריך החזיר 0 שורות).
-- `friendlyDbError` ייושם גם בhandlers של קטגוריות (`categories_name_key`) ויצירות, במקום `error.message` הגולמי.
+- `friendlyDbError` ייושם גם ב handler של קטגוריות (`categories_name_key`) ויצירות, במקום `error.message` הגולמי.
