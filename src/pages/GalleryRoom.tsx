@@ -321,12 +321,10 @@ const GalleryRoom = () => {
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-      <PageBreadcrumb crumbs={[
-        ...(gallery?.category
-          ? [{ label: gallery.category, to: `/?category=${encodeURIComponent(gallery.category)}` }]
-          : [{ label: "גלריות", to: "/" }]),
-        { label: gallery?.name ?? "..." },
-      ]} />
+      <PageBreadcrumb crumbs={buildCrumbs({
+        category: gallery?.category,
+        gallery: { name: gallery?.name ?? "..." },
+      })} />
 
       {/* Loading */}
       {isLoading && (
