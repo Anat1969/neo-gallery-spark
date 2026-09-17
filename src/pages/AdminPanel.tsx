@@ -182,12 +182,16 @@ const AdminPanel = () => {
   const openNewCategory = () => {
     setEditingCat(null);
     setCatName("");
+    setCatProjectName("");
+    setCatAppName("");
     setCatDialogOpen(true);
   };
 
-  const openEditCategory = (cat: { id: string; name: string; sort_order: number }) => {
+  const openEditCategory = (cat: { id: string; name: string; sort_order: number; project_name?: string; app_name?: string }) => {
     setEditingCat(cat);
     setCatName(cat.name);
+    setCatProjectName(cat.project_name ?? "");
+    setCatAppName(cat.app_name ?? "");
     setCatDialogOpen(true);
   };
 
