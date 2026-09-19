@@ -42,6 +42,7 @@ import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
+import ProjectMetaBar from "@/components/ProjectMetaBar";
 
 const slugify = (text: string) =>
   text.trim().toLowerCase()
