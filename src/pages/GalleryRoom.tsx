@@ -403,6 +403,30 @@ const GalleryRoom = () => {
             </span>
           </div>
           <p className="text-muted-foreground max-w-2xl mb-1">{gallery.description}</p>
+
+          <ProjectMetaBar
+            table="galleries"
+            rowId={gallery.id}
+            label="פרויקט הגלריה:"
+            projectName={(gallery as any).project_name}
+            appUrl={(gallery as any).app_name}
+            editable={isEditMode}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["gallery", slug] })}
+          />
+
+          {categoryRow && (
+            <ProjectMetaBar
+              table="categories"
+              rowId={categoryRow.id}
+              label={`פרויקט הקטגוריה ${categoryRow.name}:`}
+              projectName={categoryRow.project_name}
+              appUrl={categoryRow.app_name}
+              editable={isEditMode}
+              onSaved={() =>
+                queryClient.invalidateQueries({ queryKey: ["category-meta", gallery.category] })
+              }
+            />
+          )}
         </header>
       )}
 
