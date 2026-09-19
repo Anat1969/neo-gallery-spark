@@ -242,8 +242,8 @@ const GalleryGrid = () => {
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold text-foreground">קטגוריות</h2>
         <div className="flex flex-wrap gap-2">
-           {["הכל", ...categories.map((c) => c.name)].map((cat) => {
-            const catObj = categories.find((c) => c.name === cat);
+           {["הכל", ...sortedCategories.map((c) => c.name)].map((cat) => {
+            const catObj = sortedCategories.find((c) => c.name === cat);
             const count = cat === "הכל" ? galleries.length : galleries.filter((g) => g.category === cat).length;
             return (
               <div
@@ -426,7 +426,7 @@ const GalleryGrid = () => {
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
               <SelectContent>
-                  {categories.map((cat) => (
+                  {sortedCategories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.name}>
                       {cat.name}
                     </SelectItem>
