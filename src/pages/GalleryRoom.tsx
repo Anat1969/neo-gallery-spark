@@ -124,6 +124,21 @@ const GalleryRoom = () => {
     enabled: !!slug,
   });
 
+  // Category row for this gallery (project name + app link)
+  const { data: categoryRow } = useQuery({
+    queryKey: ["category-meta", gallery?.category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, project_name, app_name")
+        .eq("name", gallery!.category)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!gallery?.category,
+  });
+
   // Fetch rooms for this gallery — silently returns [] if table doesn't exist yet
   const { data: rooms = [] } = useQuery({
     queryKey: ["rooms", gallery?.id],
