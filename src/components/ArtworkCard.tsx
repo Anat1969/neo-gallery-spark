@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import ShareExport from "@/components/ShareExport";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
+import ProjectMetaBar from "@/components/ProjectMetaBar";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -42,7 +43,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
       const { data, error } = await supabase
         .from("artworks")
         .select(
-          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:galleries(name, slug, category)",
+          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:galleries(id, name, slug, category, project_name, app_name)",
         )
         .eq("id", id!)
         .maybeSingle();
@@ -51,6 +52,22 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
       return data;
     },
     enabled: !!id,
+  });
+
+  const galleryMeta = artwork?.gallery as any;
+
+  const { data: categoryRow } = useQuery({
+    queryKey: ["category-meta", galleryMeta?.category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, project_name, app_name")
+        .eq("name", galleryMeta.category)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!galleryMeta?.category,
   });
 
   const { data: favoriteRow } = useQuery<{ id: string } | null>({
@@ -185,6 +202,32 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
           <div className="mx-auto mt-6 max-w-3xl">
             <h1 className="text-2xl font-bold text-foreground md:text-3xl lg:text-4xl">{artwork.title}</h1>
             <p className="mt-2 text-base text-muted-foreground">{artwork.topic}</p>
+
+            {galleryMeta?.id && (
+              <ProjectMetaBar
+                table="galleries"
+                rowId={galleryMeta.id}
+                label={`פרויקט הגלריה ${galleryMeta.name}:`}
+                projectName={galleryMeta.project_name}
+                appUrl={galleryMeta.app_name}
+                editable={isEditMode}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["artwork", id] })}
+              />
+            )}
+
+            {categoryRow && (
+              <ProjectMetaBar
+                table="categories"
+                rowId={categoryRow.id}
+                label={`פרויקט הקטגוריה ${categoryRow.name}:`}
+                projectName={categoryRow.project_name}
+                appUrl={categoryRow.app_name}
+                editable={isEditMode}
+                onSaved={() =>
+                  queryClient.invalidateQueries({ queryKey: ["category-meta", galleryMeta?.category] })
+                }
+              />
+            )}
             <p className="mt-4 text-base leading-relaxed text-foreground/90">{artwork.post}</p>
 
             {(artwork.tags ?? []).length > 0 && (
