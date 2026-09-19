@@ -51,6 +51,7 @@ interface GalleryItem {
   cover_image: string;
   sort_order: number;
   artworkCount: number;
+  lastActivity?: string;
 }
 
 const GalleryGrid = () => {
@@ -84,17 +85,42 @@ const GalleryGrid = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("galleries")
-        .select("id, name, slug, description, category, cover_image, sort_order, artworks(count)")
+        .select("id, name, slug, description, category, cover_image, sort_order, updated_at, artworks(count)")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
 
-      return (data ?? []).map((g: any) => ({
-        ...g,
-        artworkCount: g.artworks?.[0]?.count ?? 0,
-      })) as GalleryItem[];
+      const { data: activity } = await supabase
+        .from("artworks")
+        .select("gallery_id, created_at")
+        .order("created_at", { ascending: false });
+
+      const latestByGallery = new Map<string, string>();
+      (activity ?? []).forEach((a: any) => {
+        if (!latestByGallery.has(a.gallery_id)) latestByGallery.set(a.gallery_id, a.created_at);
+      });
+
+      return (data ?? [])
+        .map((g: any) => ({
+          ...g,
+          artworkCount: g.artworks?.[0]?.count ?? 0,
+          lastActivity: latestByGallery.get(g.id) ?? g.updated_at ?? "",
+        }))
+        .sort((a: any, b: any) => (b.lastActivity || "").localeCompare(a.lastActivity || "")) as GalleryItem[];
     },
   });
+
+  // Categories ordered by most recent artwork activity (newest first)
+  const sortedCategories = useMemo(() => {
+    const latestByCat = new Map<string, string>();
+    galleries.forEach((g) => {
+      const cur = latestByCat.get(g.category) ?? "";
+      if ((g.lastActivity ?? "") > cur) latestByCat.set(g.category, g.lastActivity ?? "");
+    });
+    return [...categories].sort((a, b) =>
+      (latestByCat.get(b.name) ?? "").localeCompare(latestByCat.get(a.name) ?? ""),
+    );
+  }, [categories, galleries]);
 
   const filtered = useMemo(
     () =>
@@ -216,8 +242,8 @@ const GalleryGrid = () => {
       <section className="mb-10">
         <h2 className="mb-4 text-lg font-semibold text-foreground">קטגוריות</h2>
         <div className="flex flex-wrap gap-2">
-           {["הכל", ...categories.map((c) => c.name)].map((cat) => {
-            const catObj = categories.find((c) => c.name === cat);
+           {["הכל", ...sortedCategories.map((c) => c.name)].map((cat) => {
+            const catObj = sortedCategories.find((c) => c.name === cat);
             const count = cat === "הכל" ? galleries.length : galleries.filter((g) => g.category === cat).length;
             return (
               <div
@@ -400,7 +426,7 @@ const GalleryGrid = () => {
                   <SelectValue placeholder="בחרי קטגוריה" />
                 </SelectTrigger>
               <SelectContent>
-                  {categories.map((cat) => (
+                  {sortedCategories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.name}>
                       {cat.name}
                     </SelectItem>

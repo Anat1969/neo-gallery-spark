@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -169,6 +169,23 @@ const GalleryRoom = () => {
   });
 
   const isLoading = galleryLoading || artworksLoading;
+
+  // View mode: newest artworks first; edit mode keeps manual sort_order for drag
+  const displayArtworks = useMemo(
+    () =>
+      isEditMode
+        ? artworks
+        : [...(artworks as any[])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")),
+    [artworks, isEditMode],
+  );
+
+  const displayRooms = useMemo(
+    () =>
+      [...(rooms as any[])].sort((a, b) =>
+        (b.updated_at ?? b.created_at ?? "").localeCompare(a.updated_at ?? a.created_at ?? ""),
+      ),
+    [rooms],
+  );
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
@@ -395,7 +412,7 @@ const GalleryRoom = () => {
 
           {((rooms as any[]).length > 0 || isEditMode) && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {(rooms as any[]).map((room) => (
+              {displayRooms.map((room: any) => (
                 <div
                   key={room.id}
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
@@ -459,7 +476,7 @@ const GalleryRoom = () => {
 
           {((artworks as any[]).length > 0 || isEditMode) && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {(artworks as any[]).map((artwork, idx) => (
+              {displayArtworks.map((artwork: any, idx: number) => (
                 <div
                   key={artwork.id}
                   draggable={isEditMode}
