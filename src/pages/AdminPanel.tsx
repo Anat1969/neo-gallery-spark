@@ -650,7 +650,7 @@ const AdminPanel = () => {
                     <SortableHeader label="שם" active={gallerySort.key === "name"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "name", setGallerySort)} />
                     <SortableHeader label="קטגוריה" active={gallerySort.key === "category"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "category", setGallerySort)} />
                     <SortableHeader label="שם הפרויקט" active={gallerySort.key === "projectName"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "projectName", setGallerySort)} />
-                    <SortableHeader label="שם האפליקציה" active={gallerySort.key === "appName"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "appName", setGallerySort)} />
+                    <SortableHeader label="קישור לאפליקציה" active={gallerySort.key === "appName"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "appName", setGallerySort)} />
                     <SortableHeader label="יצירות" active={gallerySort.key === "artworkCount"} direction={gallerySort.direction} onSort={() => toggleSort(gallerySort, "artworkCount", setGallerySort)} />
                     <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
                   </tr>
@@ -685,8 +685,8 @@ const AdminPanel = () => {
                                appName: event.target.value,
                              },
                            }))}
-                           placeholder="הקלידי שם אפליקציה"
-                           aria-label={`שם האפליקציה של ${g.name}`}
+                           placeholder="הקלידי קישור"
+                           aria-label={`קישור לאפליקציה של ${g.name}`}
                            className="h-11 min-w-44 bg-background text-base"
                          />
                        </td>
@@ -699,7 +699,7 @@ const AdminPanel = () => {
                              variant="ghost"
                              onClick={() => void saveGalleryMetadata(g)}
                              disabled={!galleryMetadataDrafts[g.id] || savingMetadataId === `gallery-${g.id}`}
-                             title="שמירת שם הפרויקט ושם האפליקציה"
+                             title="שמירת שם הפרויקט וקישור לאפליקציה"
                              aria-label={`שמירת פרטי ${g.name}`}
                              className="h-9 w-9 text-muted-foreground hover:text-primary"
                            >
@@ -808,7 +808,7 @@ const AdminPanel = () => {
                     <tr>
                       <SortableHeader label="שם" active={categorySort.key === "name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "name", setCategorySort)} />
                       <SortableHeader label="שם הפרויקט" active={categorySort.key === "project_name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "project_name", setCategorySort)} />
-                      <SortableHeader label="שם האפליקציה" active={categorySort.key === "app_name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "app_name", setCategorySort)} />
+                      <SortableHeader label="קישור לאפליקציה" active={categorySort.key === "app_name"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "app_name", setCategorySort)} />
                       <SortableHeader label="גלריות" active={categorySort.key === "galleryCount"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "galleryCount", setCategorySort)} />
                       <SortableHeader label="סדר" active={categorySort.key === "sort_order"} direction={categorySort.direction} onSort={() => toggleSort(categorySort, "sort_order", setCategorySort)} />
                       <th className="px-5 py-4 text-right text-base font-bold text-foreground">פעולות</th>
@@ -844,8 +844,8 @@ const AdminPanel = () => {
                                   appName: event.target.value,
                                 },
                               }))}
-                              placeholder="הקלידי שם אפליקציה"
-                              aria-label={`שם האפליקציה של ${cat.name}`}
+                              placeholder="הקלידי קישור"
+                              aria-label={`קישור לאפליקציה של ${cat.name}`}
                               className="h-11 min-w-44 bg-background text-base"
                             />
                           </td>
@@ -859,7 +859,7 @@ const AdminPanel = () => {
                                 variant="ghost"
                                 onClick={() => void saveCategoryMetadata(cat)}
                                 disabled={!categoryMetadataDrafts[cat.id] || savingMetadataId === `category-${cat.id}`}
-                                title="שמירת שם הפרויקט ושם האפליקציה"
+                                title="שמירת שם הפרויקט וקישור לאפליקציה"
                                 aria-label={`שמירת פרטי ${cat.name}`}
                                 className="h-9 w-9 text-muted-foreground hover:text-primary"
                               >
@@ -918,7 +918,7 @@ const AdminPanel = () => {
               <Input value={gForm.projectName} onChange={(e) => setGForm((p) => ({ ...p, projectName: e.target.value }))} className="mt-2 h-12 text-base" />
             </div>
             <div>
-              <Label className="text-base font-semibold text-foreground">שם האפליקציה</Label>
+              <Label className="text-base font-semibold text-foreground">קישור לאפליקציה</Label>
               <Input value={gForm.appName} onChange={(e) => setGForm((p) => ({ ...p, appName: e.target.value }))} className="mt-2 h-12 text-base" />
             </div>
             <div>
@@ -1070,7 +1070,7 @@ const AdminPanel = () => {
               <Input value={catProjectName} onChange={(e) => setCatProjectName(e.target.value)} className="mt-2 h-12 text-base" placeholder="למשל: ART-AI" />
             </div>
             <div>
-              <Label className="text-base font-semibold text-foreground">שם האפליקציה</Label>
+              <Label className="text-base font-semibold text-foreground">קישור לאפליקציה</Label>
               <Input value={catAppName} onChange={(e) => setCatAppName(e.target.value)} className="mt-2 h-12 text-base" placeholder="למשל: Midjourney" />
             </div>
             <DialogFooter>

@@ -42,6 +42,7 @@ import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
+import ProjectMetaBar from "@/components/ProjectMetaBar";
 
 const slugify = (text: string) =>
   text.trim().toLowerCase()
@@ -121,6 +122,21 @@ const GalleryRoom = () => {
       return data;
     },
     enabled: !!slug,
+  });
+
+  // Category row for this gallery (project name + app link)
+  const { data: categoryRow } = useQuery({
+    queryKey: ["category-meta", gallery?.category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("id, name, project_name, app_name")
+        .eq("name", gallery!.category)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!gallery?.category,
   });
 
   // Fetch rooms for this gallery — silently returns [] if table doesn't exist yet
@@ -387,6 +403,30 @@ const GalleryRoom = () => {
             </span>
           </div>
           <p className="text-muted-foreground max-w-2xl mb-1">{gallery.description}</p>
+
+          <ProjectMetaBar
+            table="galleries"
+            rowId={gallery.id}
+            label="פרויקט הגלריה:"
+            projectName={(gallery as any).project_name}
+            appUrl={(gallery as any).app_name}
+            editable={isEditMode}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["gallery", slug] })}
+          />
+
+          {categoryRow && (
+            <ProjectMetaBar
+              table="categories"
+              rowId={categoryRow.id}
+              label={`פרויקט הקטגוריה ${categoryRow.name}:`}
+              projectName={categoryRow.project_name}
+              appUrl={categoryRow.app_name}
+              editable={isEditMode}
+              onSaved={() =>
+                queryClient.invalidateQueries({ queryKey: ["category-meta", gallery.category] })
+              }
+            />
+          )}
         </header>
       )}
 
