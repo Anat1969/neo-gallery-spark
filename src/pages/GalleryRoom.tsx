@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -412,7 +412,7 @@ const GalleryRoom = () => {
 
           {((rooms as any[]).length > 0 || isEditMode) && (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {(rooms as any[]).map((room) => (
+              {displayRooms.map((room: any) => (
                 <div
                   key={room.id}
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
@@ -476,7 +476,7 @@ const GalleryRoom = () => {
 
           {((artworks as any[]).length > 0 || isEditMode) && (
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {(artworks as any[]).map((artwork, idx) => (
+              {displayArtworks.map((artwork: any, idx: number) => (
                 <div
                   key={artwork.id}
                   draggable={isEditMode}
