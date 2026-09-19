@@ -170,6 +170,23 @@ const GalleryRoom = () => {
 
   const isLoading = galleryLoading || artworksLoading;
 
+  // View mode: newest artworks first; edit mode keeps manual sort_order for drag
+  const displayArtworks = useMemo(
+    () =>
+      isEditMode
+        ? artworks
+        : [...(artworks as any[])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")),
+    [artworks, isEditMode],
+  );
+
+  const displayRooms = useMemo(
+    () =>
+      [...(rooms as any[])].sort((a, b) =>
+        (b.updated_at ?? b.created_at ?? "").localeCompare(a.updated_at ?? a.created_at ?? ""),
+      ),
+    [rooms],
+  );
+
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
   }, [queryClient, gallery?.id]);

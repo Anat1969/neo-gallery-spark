@@ -51,6 +51,7 @@ interface GalleryItem {
   cover_image: string;
   sort_order: number;
   artworkCount: number;
+  lastActivity?: string;
 }
 
 const GalleryGrid = () => {
