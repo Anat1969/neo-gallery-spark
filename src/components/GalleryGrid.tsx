@@ -84,15 +84,28 @@ const GalleryGrid = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("galleries")
-        .select("id, name, slug, description, category, cover_image, sort_order, artworks(count)")
+        .select("id, name, slug, description, category, cover_image, sort_order, updated_at, artworks(count)")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
 
-      return (data ?? []).map((g: any) => ({
-        ...g,
-        artworkCount: g.artworks?.[0]?.count ?? 0,
-      })) as GalleryItem[];
+      const { data: activity } = await supabase
+        .from("artworks")
+        .select("gallery_id, created_at")
+        .order("created_at", { ascending: false });
+
+      const latestByGallery = new Map<string, string>();
+      (activity ?? []).forEach((a: any) => {
+        if (!latestByGallery.has(a.gallery_id)) latestByGallery.set(a.gallery_id, a.created_at);
+      });
+
+      return (data ?? [])
+        .map((g: any) => ({
+          ...g,
+          artworkCount: g.artworks?.[0]?.count ?? 0,
+          lastActivity: latestByGallery.get(g.id) ?? g.updated_at ?? "",
+        }))
+        .sort((a: any, b: any) => (b.lastActivity || "").localeCompare(a.lastActivity || "")) as GalleryItem[];
     },
   });
 
