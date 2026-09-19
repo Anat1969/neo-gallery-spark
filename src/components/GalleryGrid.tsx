@@ -110,6 +110,18 @@ const GalleryGrid = () => {
     },
   });
 
+  // Categories ordered by most recent artwork activity (newest first)
+  const sortedCategories = useMemo(() => {
+    const latestByCat = new Map<string, string>();
+    galleries.forEach((g) => {
+      const cur = latestByCat.get(g.category) ?? "";
+      if ((g.lastActivity ?? "") > cur) latestByCat.set(g.category, g.lastActivity ?? "");
+    });
+    return [...categories].sort((a, b) =>
+      (latestByCat.get(b.name) ?? "").localeCompare(latestByCat.get(a.name) ?? ""),
+    );
+  }, [categories, galleries]);
+
   const filtered = useMemo(
     () =>
       activeCategory === "הכל"
