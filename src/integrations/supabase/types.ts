@@ -217,6 +217,7 @@ export type Database = {
       rooms: {
         Row: {
           app_name: string | null
+          cover_image: string | null
           created_at: string
           description: string | null
           gallery_id: string
@@ -229,6 +230,7 @@ export type Database = {
         }
         Insert: {
           app_name?: string | null
+          cover_image?: string | null
           created_at?: string
           description?: string | null
           gallery_id: string
@@ -241,6 +243,7 @@ export type Database = {
         }
         Update: {
           app_name?: string | null
+          cover_image?: string | null
           created_at?: string
           description?: string | null
           gallery_id?: string
