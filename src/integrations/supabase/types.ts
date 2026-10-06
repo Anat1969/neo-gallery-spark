@@ -24,6 +24,7 @@ export type Database = {
           inspiration_label: string | null
           inspiration_url: string | null
           post: string | null
+          room_id: string | null
           sort_order: number
           style: string | null
           tags: string[] | null
@@ -41,6 +42,7 @@ export type Database = {
           inspiration_label?: string | null
           inspiration_url?: string | null
           post?: string | null
+          room_id?: string | null
           sort_order?: number
           style?: string | null
           tags?: string[] | null
@@ -58,6 +60,7 @@ export type Database = {
           inspiration_label?: string | null
           inspiration_url?: string | null
           post?: string | null
+          room_id?: string | null
           sort_order?: number
           style?: string | null
           tags?: string[] | null
@@ -72,6 +75,13 @@ export type Database = {
             columns: ["gallery_id"]
             isOneToOne: false
             referencedRelation: "galleries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artworks_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
@@ -203,6 +213,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      rooms: {
+        Row: {
+          app_name: string | null
+          created_at: string
+          description: string | null
+          gallery_id: string
+          id: string
+          name: string
+          project_name: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          app_name?: string | null
+          created_at?: string
+          description?: string | null
+          gallery_id: string
+          id?: string
+          name: string
+          project_name?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          app_name?: string | null
+          created_at?: string
+          description?: string | null
+          gallery_id?: string
+          id?: string
+          name?: string
+          project_name?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_gallery_id_fkey"
+            columns: ["gallery_id"]
+            isOneToOne: false
+            referencedRelation: "galleries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
