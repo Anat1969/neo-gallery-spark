@@ -29,6 +29,13 @@
       "when": 1791266613170,
       "tag": "0003_create_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791267328911,
+      "tag": "0004_add_room_cover_image",
+      "breakpoints": true
     }
   ]
 }

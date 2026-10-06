@@ -43,6 +43,7 @@ import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 import ProjectMetaBar from "@/components/ProjectMetaBar";
+import ImageDropZone from "@/components/ImageDropZone";
 
 const slugify = (text: string) =>
   text.trim().toLowerCase()
@@ -102,7 +103,8 @@ const GalleryRoom = () => {
   const [roomFormOpen, setRoomFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
   const [roomSaving, setRoomSaving] = useState(false);
-  const [roomForm, setRoomForm] = useState({ name: "", slug: "", description: "" });
+  const [roomForm, setRoomForm] = useState({ name: "", slug: "", description: "", cover_image: "" });
+  const [roomCoverUploadingId, setRoomCoverUploadingId] = useState<string | null>(null);
   const [deleteRoomTarget, setDeleteRoomTarget] = useState<any>(null);
 
   // Move-to-room dialog
@@ -297,16 +299,43 @@ const GalleryRoom = () => {
   // ── Room CRUD ─────────────────────────────────────────────
   const openNewRoom = () => {
     setEditingRoom(null);
-    setRoomForm({ name: "", slug: "", description: "" });
+    setRoomForm({ name: "", slug: "", description: "", cover_image: "" });
     setRoomFormOpen(true);
   };
 
   const openEditRoom = (e: React.MouseEvent, room: any) => {
     e.stopPropagation();
     setEditingRoom(room);
-    setRoomForm({ name: room.name, slug: room.slug, description: room.description ?? "" });
+    setRoomForm({ name: room.name, slug: room.slug, description: room.description ?? "", cover_image: room.cover_image ?? "" });
     setRoomFormOpen(true);
   };
+
+  // Upload a cover image straight onto a room card (drag / paste / click)
+  const uploadRoomCover = useCallback(async (roomId: string, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "שגיאה", description: "רק קבצי תמונה מותרים", variant: "destructive" });
+      return;
+    }
+    setRoomCoverUploadingId(roomId);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `room-covers/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("artwork-images").getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from("rooms" as any)
+        .update({ cover_image: data.publicUrl })
+        .eq("id", roomId);
+      if (updateError) throw updateError;
+      refreshRooms();
+      toast({ title: "תמונת החדר עודכנה" });
+    } catch (err: any) {
+      toast({ title: "שגיאה בהעלאה", description: err.message, variant: "destructive" });
+    } finally {
+      setRoomCoverUploadingId(null);
+    }
+  }, [refreshRooms, toast]);
 
   const handleSaveRoom = async () => {
     if (!gallery || !roomForm.name.trim()) {
@@ -319,7 +348,7 @@ const GalleryRoom = () => {
       if (editingRoom) {
         const { error } = await supabase
           .from("rooms" as any)
-          .update({ name: roomForm.name, slug: normalizedSlug, description: roomForm.description })
+          .update({ name: roomForm.name, slug: normalizedSlug, description: roomForm.description, cover_image: roomForm.cover_image })
           .eq("id", editingRoom.id);
         if (error) throw error;
         toast({ title: "החדר עודכן" });
@@ -327,7 +356,7 @@ const GalleryRoom = () => {
         const nextOrder = rooms.length > 0 ? Math.max(...(rooms as any[]).map(r => r.sort_order)) + 1 : 0;
         const { error } = await supabase
           .from("rooms" as any)
-          .insert({ gallery_id: gallery.id, name: roomForm.name, slug: normalizedSlug, description: roomForm.description, sort_order: nextOrder });
+          .insert({ gallery_id: gallery.id, name: roomForm.name, slug: normalizedSlug, description: roomForm.description, cover_image: roomForm.cover_image, sort_order: nextOrder });
         if (error) throw error;
         toast({ title: "החדר נוצר" });
       }
@@ -458,12 +487,48 @@ const GalleryRoom = () => {
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
                   className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-[0_0_16px_hsl(76_90%_61%/0.12)]"
                 >
-                  <div className="relative aspect-video overflow-hidden bg-secondary">
+                  <div
+                    className={`relative aspect-video overflow-hidden bg-secondary ${isEditMode ? "outline-dashed outline-1 outline-muted-foreground/20" : ""}`}
+                    tabIndex={isEditMode ? 0 : undefined}
+                    title={isEditMode ? "גררי, הדביקי או לחצי להעלאת תמונת חדר" : undefined}
+                    onDragOver={(e) => { if (isEditMode) { e.preventDefault(); e.stopPropagation(); } }}
+                    onDrop={(e) => {
+                      if (!isEditMode) return;
+                      e.preventDefault(); e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) uploadRoomCover(room.id, file);
+                    }}
+                    onPaste={(e) => {
+                      if (!isEditMode) return;
+                      const file = Array.from(e.clipboardData.items).find(i => i.type.startsWith("image/"))?.getAsFile();
+                      if (!file) return;
+                      e.preventDefault(); e.stopPropagation();
+                      uploadRoomCover(room.id, file);
+                    }}
+                    onClick={(e) => {
+                      if (!isEditMode) return;
+                      e.stopPropagation();
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
+                      input.onchange = () => {
+                        const file = input.files?.[0];
+                        if (file) uploadRoomCover(room.id, file);
+                      };
+                      input.click();
+                    }}
+                  >
+                    {roomCoverUploadingId === room.id && (
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      </div>
+                    )}
                     {room.cover_image ? (
                       <img src={room.cover_image} alt={room.name} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center">
+                      <div className="flex h-full w-full flex-col items-center justify-center gap-1">
                         <DoorOpen className="h-8 w-8 text-muted-foreground/30" />
+                        {isEditMode && <p className="text-xs text-muted-foreground/60">גררי, הדביקי או לחצי להוספת תמונה</p>}
                       </div>
                     )}
                   </div>
@@ -717,6 +782,16 @@ const GalleryRoom = () => {
                 rows={3}
                 className="mt-1"
               />
+            </div>
+            <div>
+              <Label>תמונת החדר</Label>
+              <div className="mt-1">
+                <ImageDropZone
+                  value={roomForm.cover_image}
+                  onChange={(url) => setRoomForm((p) => ({ ...p, cover_image: url }))}
+                  folder="room-covers"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>
