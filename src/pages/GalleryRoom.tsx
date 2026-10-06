@@ -43,6 +43,7 @@ import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 import ProjectMetaBar from "@/components/ProjectMetaBar";
+import ImageDropZone from "@/components/ImageDropZone";
 
 const slugify = (text: string) =>
   text.trim().toLowerCase()
@@ -102,7 +103,8 @@ const GalleryRoom = () => {
   const [roomFormOpen, setRoomFormOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<any>(null);
   const [roomSaving, setRoomSaving] = useState(false);
-  const [roomForm, setRoomForm] = useState({ name: "", slug: "", description: "" });
+  const [roomForm, setRoomForm] = useState({ name: "", slug: "", description: "", cover_image: "" });
+  const [roomCoverUploadingId, setRoomCoverUploadingId] = useState<string | null>(null);
   const [deleteRoomTarget, setDeleteRoomTarget] = useState<any>(null);
 
   // Move-to-room dialog
@@ -297,16 +299,43 @@ const GalleryRoom = () => {
   // ── Room CRUD ─────────────────────────────────────────────
   const openNewRoom = () => {
     setEditingRoom(null);
-    setRoomForm({ name: "", slug: "", description: "" });
+    setRoomForm({ name: "", slug: "", description: "", cover_image: "" });
     setRoomFormOpen(true);
   };
 
   const openEditRoom = (e: React.MouseEvent, room: any) => {
     e.stopPropagation();
     setEditingRoom(room);
-    setRoomForm({ name: room.name, slug: room.slug, description: room.description ?? "" });
+    setRoomForm({ name: room.name, slug: room.slug, description: room.description ?? "", cover_image: room.cover_image ?? "" });
     setRoomFormOpen(true);
   };
+
+  // Upload a cover image straight onto a room card (drag / paste / click)
+  const uploadRoomCover = useCallback(async (roomId: string, file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "שגיאה", description: "רק קבצי תמונה מותרים", variant: "destructive" });
+      return;
+    }
+    setRoomCoverUploadingId(roomId);
+    try {
+      const ext = file.name.split(".").pop() ?? "png";
+      const path = `room-covers/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+      if (error) throw error;
+      const { data } = supabase.storage.from("artwork-images").getPublicUrl(path);
+      const { error: updateError } = await supabase
+        .from("rooms" as any)
+        .update({ cover_image: data.publicUrl })
+        .eq("id", roomId);
+      if (updateError) throw updateError;
+      refreshRooms();
+      toast({ title: "תמונת החדר עודכנה" });
+    } catch (err: any) {
+      toast({ title: "שגיאה בהעלאה", description: err.message, variant: "destructive" });
+    } finally {
+      setRoomCoverUploadingId(null);
+    }
+  }, [refreshRooms, toast]);
 
   const handleSaveRoom = async () => {
     if (!gallery || !roomForm.name.trim()) {
