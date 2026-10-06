@@ -21,6 +21,7 @@ import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
+import ProjectMetaBar from "@/components/ProjectMetaBar";
 
 const RoomPage = () => {
   const { gallerySlug, roomSlug } = useParams<{ gallerySlug: string; roomSlug: string }>();
@@ -236,6 +237,15 @@ const RoomPage = () => {
             <p className="mt-2 text-muted-foreground max-w-2xl">{room.description}</p>
           )}
           <p className="mt-1 text-sm text-muted-foreground">{artworks.length} עבודות</p>
+          <ProjectMetaBar
+            table="rooms"
+            rowId={room.id}
+            label="פרויקט החדר:"
+            projectName={room.project_name}
+            appUrl={room.app_name}
+            editable={isEditMode}
+            onSaved={() => queryClient.invalidateQueries({ queryKey: ["room", gallery?.id, roomSlug] })}
+          />
         </header>
       )}
 

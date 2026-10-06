@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { ExternalLink, Save, Sparkles } from "lucide-react";
 
-type MetaTable = "galleries" | "categories";
+type MetaTable = "galleries" | "categories" | "rooms";
 
 interface ProjectMetaBarProps {
   table: MetaTable;
