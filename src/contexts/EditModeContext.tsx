@@ -24,7 +24,9 @@ export const EditModeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, String(isEditMode));
-    } catch {}
+    } catch {
+      /* storage blocked */
+    }
   }, [isEditMode]);
 
   const toggleEditMode = useCallback(() => setIsEditMode((prev) => !prev), []);

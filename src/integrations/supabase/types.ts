@@ -23,6 +23,12 @@ export type Database = {
           image_url: string | null
           inspiration_label: string | null
           inspiration_url: string | null
+          media_url: string | null
+          media_type: string
+          mime: string | null
+          file_size: number | null
+          width: number | null
+          height: number | null
           post: string | null
           room_id: string | null
           sort_order: number
@@ -41,6 +47,12 @@ export type Database = {
           image_url?: string | null
           inspiration_label?: string | null
           inspiration_url?: string | null
+          media_url?: string | null
+          media_type?: string
+          mime?: string | null
+          file_size?: number | null
+          width?: number | null
+          height?: number | null
           post?: string | null
           room_id?: string | null
           sort_order?: number
@@ -59,6 +71,12 @@ export type Database = {
           image_url?: string | null
           inspiration_label?: string | null
           inspiration_url?: string | null
+          media_url?: string | null
+          media_type?: string
+          mime?: string | null
+          file_size?: number | null
+          width?: number | null
+          height?: number | null
           post?: string | null
           room_id?: string | null
           sort_order?: number
@@ -124,7 +142,7 @@ export type Database = {
           artwork_id: string
           created_at?: string
           id?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           artwork_id?: string

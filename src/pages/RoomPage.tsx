@@ -2,7 +2,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +20,11 @@ import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 import ProjectMetaBar from "@/components/ProjectMetaBar";
+import { AnimatePresence, motion } from "framer-motion";
+import ArtworkWall, { type WallArtwork } from "@/components/media/ArtworkWall";
+import ScreeningMode from "@/components/media/ScreeningMode";
+import { useArtworkUploader } from "@/hooks/useArtworkUploader";
+import { useDockActions } from "@/contexts/DockContext";
 
 const RoomPage = () => {
   const { gallerySlug, roomSlug } = useParams<{ gallerySlug: string; roomSlug: string }>();
@@ -28,12 +32,11 @@ const RoomPage = () => {
   const queryClient = useQueryClient();
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [screening, setScreening] = useState(false);
 
   // Fetch gallery
   const { data: gallery } = useQuery({
@@ -66,20 +69,6 @@ const RoomPage = () => {
     enabled: !!gallery?.id && !!roomSlug,
   });
 
-  // Fetch user favorites
-  const { data: userFavorites = [] } = useQuery({
-    queryKey: ["favorites", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("neo_favorites" as any)
-        .select("id, artwork_id")
-        .eq("user_id", user!.id);
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
   // Fetch artworks in this room
   const { data: artworks = [], isLoading: artworksLoading } = useQuery({
     queryKey: ["room-artworks", room?.id],
@@ -100,27 +89,6 @@ const RoomPage = () => {
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["room-artworks", room?.id] });
   }, [queryClient, room?.id]);
-
-  const getFavoriteId = (artworkId: string) =>
-    userFavorites.find((f: any) => f.artwork_id === artworkId)?.id;
-
-  const handleToggleFavorite = async (e: React.MouseEvent, artworkId: string) => {
-    e.stopPropagation();
-    if (!user) {
-      toast({ title: "צריך להתחבר כדי לשמור למועדפים", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    const existingId = getFavoriteId(artworkId);
-    if (existingId) {
-      await supabase.from("neo_favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
-      toast({ title: "הוסר מהמועדפים" });
-    } else {
-      await supabase.from("neo_favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
-      toast({ title: "נשמר במועדפים" });
-    }
-    queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
-  };
 
   const handleAddInline = async () => {
     if (!gallery || !room) return;
@@ -168,8 +136,7 @@ const RoomPage = () => {
   };
 
   // Remove artwork from room (keep in gallery root)
-  const handleRemoveFromRoom = async (e: React.MouseEvent, artworkId: string) => {
-    e.stopPropagation();
+  const handleRemoveFromRoom = async (artworkId: string) => {
     const { error } = await supabase
       .from("neo_artworks")
       .update({ room_id: null } as any)
@@ -183,22 +150,41 @@ const RoomPage = () => {
     }
   };
 
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-
-  const handleDrop = async (dropIdx: number) => {
-    if (dragIdx === null || dragIdx === dropIdx) { setDragIdx(null); return; }
-    const reordered = [...artworks];
-    const [moved] = reordered.splice(dragIdx, 1);
-    reordered.splice(dropIdx, 0, moved);
+  const handleReorder = async (reordered: WallArtwork[]) => {
     queryClient.setQueryData(["room-artworks", room?.id], reordered);
-    setDragIdx(null);
-    const updates = reordered.map((a: any, i) => ({ id: a.id, sort_order: i }));
-    await Promise.all(updates.map((u) => supabase.from("neo_artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
+    await Promise.all(reordered.map((a, i) => supabase.from("neo_artworks").update({ sort_order: i }).eq("id", a.id)));
     refresh();
   };
 
+  const nextOrder = artworks.length > 0 ? Math.max(...artworks.map((a: any) => a.sort_order)) + 1 : 0;
+  const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: room?.id, nextOrder, onDone: refresh });
+
+  const pickFiles = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.onchange = () => input.files?.length && uploader.upload(Array.from(input.files));
+    input.click();
+  };
+
+  useDockActions(
+    room
+      ? [
+          { id: "upload", label: "העלאת קבצים", onClick: pickFiles, primary: true },
+          { id: "empty", label: "יצירה ריקה", onClick: handleAddInline },
+        ]
+      : [],
+    [room?.id, artworks.length],
+  );
+
+  const tileActions = [
+    { label: "עריכת פרטים", onClick: (a: WallArtwork) => handleEdit(a) },
+    { label: "הוצאה מהחדר", onClick: (a: WallArtwork) => handleRemoveFromRoom(a.id) },
+    { label: "מחיקה", onClick: (a: WallArtwork) => setDeleteTarget({ id: a.id, title: a.title }), danger: true },
+  ];
+
   return (
-    <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12" dir="rtl">
+    <div className="min-h-screen px-4 py-8 md:px-8 lg:px-12" dir="rtl">
       <PageBreadcrumb crumbs={buildCrumbs({
         category: (gallery as any)?.category,
         gallery: { name: gallery?.name ?? "...", slug: gallerySlug },
@@ -215,135 +201,66 @@ const RoomPage = () => {
       )}
 
       {!isLoading && room && (
-        <header className="mb-8">
-          <InlineEdit
-            value={room.name}
-            enabled={isEditMode}
-            as="h1"
-            className="text-3xl font-bold text-foreground md:text-4xl"
-            inputClassName="text-3xl font-bold md:text-4xl"
-            onSave={async (newName) => {
-              const { error } = await supabase
-                .from("neo_rooms" as any)
-                .update({ name: newName })
-                .eq("id", room.id);
-              if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-              queryClient.invalidateQueries({ queryKey: ["room", gallery?.id, roomSlug] });
-              toast({ title: "שם החדר עודכן" });
-            }}
-          />
-          {room.description && (
-            <p className="mt-2 text-muted-foreground max-w-2xl">{room.description}</p>
+        <header className="mb-10 grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div className="min-w-0">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">חדר בגלריה {gallery?.name}</span>
+            <InlineEdit
+              value={room.name}
+              enabled={isEditMode}
+              as="h1"
+              className="mt-1 text-4xl font-extralight tracking-tight text-foreground md:text-6xl"
+              inputClassName="text-4xl font-extralight md:text-6xl"
+              onSave={async (newName) => {
+                const { error } = await supabase.from("neo_rooms" as any).update({ name: newName }).eq("id", room.id);
+                if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
+                queryClient.invalidateQueries({ queryKey: ["room", gallery?.id, roomSlug] });
+                toast({ title: "שם החדר עודכן" });
+              }}
+            />
+            {room.description && <p className="mt-3 max-w-2xl text-muted-foreground">{room.description}</p>}
+            <p className="mt-3 font-mono text-[11px] text-muted-foreground">{artworks.length} עבודות</p>
+            <ProjectMetaBar
+              table="rooms"
+              rowId={room.id}
+              label="פרויקט החדר:"
+              projectName={room.project_name}
+              appUrl={room.app_name}
+              editable={isEditMode}
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ["room", gallery?.id, roomSlug] })}
+            />
+          </div>
+          {artworks.length > 0 && (
+            <motion.button
+              type="button"
+              onClick={() => setScreening(true)}
+              whileHover={{ scale: 1.03 }}
+              className="h-14 rounded-full bg-foreground px-8 text-base font-light text-background shadow-deep"
+            >
+              הקרנה
+            </motion.button>
           )}
-          <p className="mt-1 text-sm text-muted-foreground">{artworks.length} עבודות</p>
-          <ProjectMetaBar
-            table="rooms"
-            rowId={room.id}
-            label="פרויקט החדר:"
-            projectName={room.project_name}
-            appUrl={room.app_name}
-            editable={isEditMode}
-            onSaved={() => queryClient.invalidateQueries({ queryKey: ["room", gallery?.id, roomSlug] })}
-          />
         </header>
       )}
 
-      {!isLoading && room && artworks.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <p className="text-lg text-muted-foreground">החדר ריק — הוסיפי יצירות מהגלריה</p>
-          {isEditMode && (
-            <div
-              onClick={handleAddInline}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 px-8 py-6 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
-            >
-              <span className="text-sm font-medium">הוסיפי יצירה ראשונה</span>
-            </div>
-          )}
-        </div>
+      {!isLoading && room && (
+        artworks.length === 0 && !isEditMode ? (
+          <p className="py-16 text-center text-lg text-muted-foreground">החדר ריק. במצב עריכה אפשר לגרור לכאן קבצים.</p>
+        ) : (
+          <ArtworkWall
+            artworks={artworks as WallArtwork[]}
+            editing={isEditMode}
+            actions={tileActions}
+            onReorder={handleReorder}
+            onUpload={uploader.upload}
+            onReplaceMedia={(a, f) => uploader.replace(a.id, f)}
+            uploading={uploader.progress}
+          />
+        )
       )}
 
-      {!isLoading && room && artworks.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {(artworks as any[]).map((artwork, idx) => (
-            <div
-              key={artwork.id}
-              draggable={isEditMode}
-              onDragStart={() => handleDragStart(idx)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => handleDrop(idx)}
-              className={`group relative overflow-hidden rounded-lg border bg-card text-right transition-all cursor-pointer ${
-                dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
-              }`}
-              onClick={() => navigate(`/artwork/${artwork.id}`)}
-            >
-              {isEditMode && (
-                <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap gap-1">
-                  <span aria-label="גרירה לשינוי סדר" className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm cursor-grab">
-                    גרירה
-                  </span>
-                  <span
-                    role="button"
-                    onClick={(e) => handleRemoveFromRoom(e, artwork.id)}
-                    title="הוצא מהחדר"
-                    aria-label="הוצאה מהחדר"
-                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-amber-500 cursor-pointer"
-                  >
-                    הוצאה מהחדר
-                  </span>
-                  <span
-                    role="button"
-                    onClick={(e) => { e.stopPropagation(); handleEdit(artwork); }}
-                    aria-label="עריכת יצירה"
-                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
-                  >
-                    עריכה
-                  </span>
-                  <span
-                    role="button"
-                    onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: artwork.id, title: artwork.title }); }}
-                    aria-label="מחיקת יצירה"
-                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
-                  >
-                    מחיקה
-                  </span>
-                </div>
-              )}
-              <div className="relative aspect-square overflow-hidden bg-secondary">
-                {artwork.image_url ? (
-                  <img src={artwork.image_url} alt={artwork.title} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
-                  </div>
-                )}
-              </div>
-              <div className="flex items-start justify-between p-4">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-base font-semibold text-foreground truncate">{artwork.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
-                </div>
-                <button
-                  onClick={(e) => handleToggleFavorite(e, artwork.id)}
-                  aria-label={getFavoriteId(artwork.id) ? "הסרה מהמועדפים" : "שמירה למועדפים"}
-                  aria-pressed={!!getFavoriteId(artwork.id)}
-                  className={`mt-0.5 flex h-8 shrink-0 items-center justify-center rounded-full px-2 text-xs transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                >
-                  {getFavoriteId(artwork.id) ? "שמור" : "שמירה"}
-                </button>
-              </div>
-            </div>
-          ))}
-          {isEditMode && (
-            <div
-              onClick={handleAddInline}
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
-              style={{ minHeight: "280px" }}
-            >
-              <span className="text-sm font-medium">הוסיפי יצירה</span>
-            </div>
-          )}
-        </div>
-      )}
+      <AnimatePresence>
+        {screening && <ScreeningMode artworks={artworks as WallArtwork[]} title={room?.name ?? ""} onClose={() => setScreening(false)} />}
+      </AnimatePresence>
 
       {gallery && (
         <ArtworkFormDialog

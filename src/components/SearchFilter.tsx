@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { thumbUrl } from "@/lib/media";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -352,9 +353,10 @@ const SearchFilter = () => {
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <img
-                  src={r.imageUrl}
+                  src={thumbUrl(r.imageUrl, 480)}
                   alt={r.title}
                   loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover transition-transform group-hover:scale-105"
                 />
                 <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">

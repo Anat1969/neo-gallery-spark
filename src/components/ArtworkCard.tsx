@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect } from "react";
+import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,8 +10,9 @@ import PageBreadcrumb from "@/components/PageBreadcrumb";
 import ProjectMetaBar from "@/components/ProjectMetaBar";
 import { buildCrumbs } from "@/lib/breadcrumbs";
 import { useEditMode } from "@/contexts/EditModeContext";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import { useFavorites } from "@/hooks/useFavorites";
+import MediaViewer from "@/components/media/MediaViewer";
+import { MEDIA_LABEL, type MediaType } from "@/lib/media";
 
 interface ArtworkCardProps {
   asModal?: boolean;
@@ -22,8 +24,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isEditMode } = useEditMode();
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { isFavorite, toggle } = useFavorites();
 
   const {
     data: artwork,
@@ -35,7 +36,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
       const { data, error } = await supabase
         .from("neo_artworks")
         .select(
-          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:neo_galleries(id, name, slug, category, project_name, app_name)",
+          "id, title, topic, post, tags, style, concept, year, image_url, media_url, media_type, inspiration_url, inspiration_label, gallery_id, room_id, sort_order, created_at, gallery:neo_galleries(id, name, slug, category, project_name, app_name)",
         )
         .eq("id", id!)
         .maybeSingle();
@@ -62,68 +63,40 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
     enabled: !!galleryMeta?.category,
   });
 
-  const { data: favoriteRow } = useQuery<{ id: string } | null>({
-    queryKey: ["favorite", id, user?.id],
+  // Neighbours in the same gallery, newest first (as on the wall), for previous / next
+  const { data: siblings = [] } = useQuery({
+    queryKey: ["siblings", artwork?.gallery_id],
     queryFn: async () => {
-      const favoritesQuery = supabase.from("neo_favorites" as any) as any;
-      const { data, error } = await favoritesQuery
-        .select("id")
-        .eq("user_id", user!.id)
-        .eq("artwork_id", id!)
-        .maybeSingle();
-
-      if (error) throw error;
-      return (data ?? null) as { id: string } | null;
+      const { data } = await supabase
+        .from("neo_artworks")
+        .select("id, created_at")
+        .eq("gallery_id", artwork!.gallery_id)
+        .order("created_at", { ascending: false });
+      return data ?? [];
     },
-    enabled: !!id && !!user,
+    enabled: !!artwork?.gallery_id,
+    staleTime: 5 * 60_000,
   });
+  const pos = siblings.findIndex((x) => x.id === id);
+  const prevId = pos > 0 ? siblings[pos - 1].id : null;
+  const nextId = pos >= 0 && pos < siblings.length - 1 ? siblings[pos + 1].id : null;
 
-  const isFavorited = !!favoriteRow?.id;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest("input,textarea,[contenteditable]")) return;
+      if (e.key === "ArrowLeft" && nextId) navigate(`/artwork/${nextId}`);
+      if (e.key === "ArrowRight" && prevId) navigate(`/artwork/${prevId}`);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [prevId, nextId, navigate]);
 
-  const handleToggleFavorite = async () => {
-    if (!id) return;
-
-    if (!user) {
-      toast({ title: "צריך להתחבר כדי לשמור למועדפים", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-
-    if (isFavorited && favoriteRow?.id) {
-      const { error } = await supabase
-        .from("neo_favorites" as any)
-        .delete()
-        .eq("id", favoriteRow.id)
-        .eq("user_id", user.id);
-
-      if (error) {
-        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "הוסר מהמועדפים" });
-    } else {
-      const { error } = await supabase
-        .from("neo_favorites" as any)
-        .insert({ user_id: user.id, artwork_id: id });
-
-      if (error) {
-        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-        return;
-      }
-
-      toast({ title: "נשמר במועדפים" });
-    }
-
-    queryClient.invalidateQueries({ queryKey: ["favorite", id, user.id] });
-    queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
-  };
-
-  const imageMissing = useMemo(() => !artwork?.image_url, [artwork?.image_url]);
+  const isFavorited = !!id && isFavorite(id);
+  const handleToggleFavorite = () => id && toggle(id);
 
   const content = (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-background/80 px-4 py-3 backdrop-blur-sm md:px-8">
+    <div className="min-h-screen">
+      <div className="flex items-center justify-between px-4 py-3 md:px-8">
         {asModal ? (
           <button
             onClick={onClose}
@@ -174,24 +147,18 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
 
       {!isLoading && !isError && artwork && (
         <div className="px-4 pb-12 md:px-8 lg:px-12">
-          {imageMissing ? (
-            <div className="mx-auto flex aspect-[3/2] max-h-[60vh] max-w-4xl items-center justify-center rounded-lg bg-secondary">
-              <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <span className="font-mono text-sm">אין תמונה</span>
-              </div>
-            </div>
-          ) : (
-            <div className="mx-auto max-w-4xl">
-              <img
-                src={artwork.image_url}
-                alt={artwork.title}
-                className="mx-auto max-h-[60vh] w-full rounded-lg object-contain"
-              />
-            </div>
-          )}
+          <motion.div key={artwork.id} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="mx-auto max-w-5xl">
+            <MediaViewer item={artwork} />
+          </motion.div>
+
+          <div className="mx-auto mt-4 flex max-w-5xl items-center justify-between font-mono text-xs text-muted-foreground">
+            <button type="button" disabled={!prevId} onClick={() => prevId && navigate(`/artwork/${prevId}`)} className="h-9 min-h-0 rounded-md px-3 hover:bg-secondary disabled:opacity-30">הקודמת</button>
+            <span>{MEDIA_LABEL[(artwork.media_type || "image") as MediaType]}{pos >= 0 && ` · ${pos + 1} / ${siblings.length}`}</span>
+            <button type="button" disabled={!nextId} onClick={() => nextId && navigate(`/artwork/${nextId}`)} className="h-9 min-h-0 rounded-md px-3 hover:bg-secondary disabled:opacity-30">הבאה</button>
+          </div>
 
           <div className="mx-auto mt-6 max-w-3xl">
-            <h1 className="text-2xl font-bold text-foreground md:text-3xl lg:text-4xl">{artwork.title}</h1>
+            <h1 className="text-3xl font-extralight tracking-tight text-foreground md:text-5xl">{artwork.title}</h1>
             <p className="mt-2 text-base text-muted-foreground">{artwork.topic}</p>
 
             {galleryMeta?.id && (
@@ -226,7 +193,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                 {(artwork.tags ?? []).map((tag: string) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-primary px-3 py-1 text-xs font-medium text-primary"
+                    className="rounded-full border border-border px-3 py-1 font-mono text-[11px] text-muted-foreground"
                   >
                     {tag}
                   </span>
@@ -269,7 +236,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                     isFavorited ? "border-primary text-primary" : "text-muted-foreground"
                   } hover:border-primary hover:text-primary`}
                 >
-                  שמור למועדפים
+                  {isFavorited ? "נבחרת" : "לנבחרות"}
                 </Button>
 
                 <ShareExport
