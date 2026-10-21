@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-
 import { useIsFetching } from "@tanstack/react-query";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useEditMode } from "@/contexts/EditModeContext";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import AnatLogo from "@/components/AnatLogo";
 import QuickSearch from "@/components/QuickSearch";
@@ -26,7 +25,6 @@ const NAV = [
 const AppHeader = () => {
   const { canInstall, install } = useInstallPrompt();
   const { theme, toggleTheme } = useTheme();
-  const { isEditMode } = useEditMode();
   const location = useLocation();
   const fetching = useIsFetching();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -54,15 +52,24 @@ const AppHeader = () => {
     toast.success("הקישור הועתק");
   };
 
-  const actions = useMemo(
+  const primary = useMemo(
     () => (
       <>
         <button type="button" onClick={() => setSearchOpen(true)} className={chip} aria-label="חיפוש מהיר">
-          חיפוש <span aria-hidden className="arch-num hidden xl:inline">CTRL K</span>
+          חיפוש <span aria-hidden className="arch-num hidden 2xl:inline">CTRL K</span>
         </button>
         <button type="button" onClick={toggleTheme} className={chip} aria-label="החלפת רקע">
           {theme === "dark" ? "רקע בהיר" : "רקע כהה"}
         </button>
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme],
+  );
+
+  const actions = useMemo(
+    () => (
+      <>
         <button type="button" onClick={copyLink} className={chip}>העתקת קישור</button>
         <a href={DEV_CHAT_URL} target="_blank" rel="noreferrer" className={chip}>שיחת הפיתוח</a>
         {canInstall && (
@@ -107,27 +114,16 @@ const AppHeader = () => {
               ))}
             </nav>
 
-            <AnimatePresence>
-              {isEditMode && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="hidden items-center gap-2 border border-foreground/50 px-3 py-1 font-mono text-[10px] tracking-[0.15em] text-foreground md:inline-flex"
-                >
-                  <span className="h-1.5 w-1.5 animate-pulse bg-foreground" />
-                  מצב עריכה
-                </motion.span>
-              )}
-            </AnimatePresence>
+
           </div>
 
           <div className="flex min-w-0 items-center gap-2">
-            <div className="hidden items-center gap-2 md:flex">{actions}</div>
+            <div className="hidden items-center gap-2 md:flex">{primary}</div>
+            <div className="hidden items-center gap-2 xl:flex">{actions}</div>
 
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <button type="button" className={cn(chip, "lg:hidden")} aria-label="תפריט">תפריט</button>
+                <button type="button" className={cn(chip, "xl:hidden")} aria-label="תפריט">תפריט</button>
               </SheetTrigger>
               <SheetContent side="right" className="border-border bg-card" dir="rtl">
                 <SheetTitle className="font-mono text-xs font-normal text-muted-foreground">תפריט</SheetTitle>
@@ -147,7 +143,7 @@ const AppHeader = () => {
                       </Link>
                     </SheetClose>
                   ))}
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4 md:hidden">{actions}</div>
+                  <div className="mt-6 flex flex-wrap gap-2"><span className="contents md:hidden">{primary}</span>{actions}</div>
                 </nav>
               </SheetContent>
             </Sheet>

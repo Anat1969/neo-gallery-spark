@@ -3,6 +3,9 @@ import { Toaster as Sonner, toast } from "sonner";
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
+// Sonner falls back to its own icons for null, so pass an empty element instead
+const noIcon = <span hidden />;
+
 const Toaster = ({ ...props }: ToasterProps) => {
   const { theme } = useTheme();
 
@@ -11,7 +14,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       dir="rtl"
-      icons={{ success: null, error: null, info: null, warning: null, loading: null }}
+      icons={{ success: noIcon, error: noIcon, info: noIcon, warning: noIcon, loading: noIcon }}
       toastOptions={{
         classNames: {
           toast:
