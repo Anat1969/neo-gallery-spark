@@ -119,15 +119,16 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index }: {
             />
           ))}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          <span className="absolute left-3 top-3 rounded-full bg-background/80 px-3 py-1 font-mono text-[10px] text-foreground backdrop-blur">{gallery.category}</span>
+          <span className="absolute left-0 top-0 bg-background/85 px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-foreground backdrop-blur">{gallery.category}</span>
           {frames.length > 1 && (
             <div className="absolute inset-x-3 bottom-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {frames.map((_, i) => <span key={i} className={`h-0.5 flex-1 rounded-full ${i === frame ? "bg-white" : "bg-white/35"}`} />)}
+              {frames.map((_, i) => <span key={i} className={`h-px flex-1 ${i === frame ? "bg-white" : "bg-white/35"}`} />)}
             </div>
           )}
         </div>
         <div className="flex items-start justify-between gap-2 p-4">
           <div className="min-w-0">
+            <span aria-hidden className="arch-num">{String(index + 1).padStart(3, "0")}</span>
             {nameNode}
             <p className="mt-1 font-mono text-[11px] text-muted-foreground">{gallery.artworkCount} עבודות</p>
           </div>
@@ -357,11 +358,8 @@ const GalleryGrid = () => {
                 key={cat}
                 role="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`flex cursor-pointer items-center gap-1 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  activeCategory === cat
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground"
-                }`}
+                aria-pressed={activeCategory === cat}
+                className="arch-btn h-9 cursor-pointer gap-2"
               >
                 {catObj && isEditMode ? (
                   <InlineEdit
@@ -380,7 +378,7 @@ const GalleryGrid = () => {
                 ) : (
                   <span>{cat}</span>
                 )}
-                {count > 0 && <span className="mr-1 text-xs opacity-75">{count}</span>}
+                {count > 0 && <span aria-hidden className="arch-num">{String(count).padStart(2, "0")}</span>}
               </div>
             );
           })}
@@ -450,7 +448,7 @@ const GalleryGrid = () => {
                   isEditMode && (
                     <DropdownMenu dir="rtl">
                       <DropdownMenuTrigger asChild>
-                        <button type="button" onClick={(e) => e.stopPropagation()} className="h-8 min-h-0 shrink-0 rounded-full border border-border px-3 font-mono text-[10px] text-muted-foreground hover:text-foreground">
+                        <button type="button" onClick={(e) => e.stopPropagation()} className="arch-btn h-8 px-2.5 text-[10px]">
                           פעולות
                         </button>
                       </DropdownMenuTrigger>

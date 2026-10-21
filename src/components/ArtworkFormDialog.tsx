@@ -306,7 +306,7 @@ const ArtworkFormDialog = ({
                 {form.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 rounded-full border border-primary px-2 py-0.5 text-xs text-primary"
+                    className="inline-flex items-center gap-1 rounded-none border border-primary px-2 py-0.5 text-xs text-primary"
                   >
                     {tag}
                     <button onClick={() => removeTag(tag)} aria-label={`הסרת התגית ${tag}`} className="text-muted-foreground hover:text-destructive">

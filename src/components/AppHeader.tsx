@@ -4,7 +4,6 @@ import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-
 import { useIsFetching } from "@tanstack/react-query";
 import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useEditMode } from "@/contexts/EditModeContext";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import AnatLogo from "@/components/AnatLogo";
 import QuickSearch from "@/components/QuickSearch";
@@ -14,8 +13,7 @@ import { cn } from "@/lib/utils";
 export const APP_NAME = "ART-AI גלריה";
 export const DEV_CHAT_URL = "https://claude.ai/code/session_01S9BWDcyE3q4wF5HXv6WniZ";
 
-const chip =
-  "inline-flex h-8 min-h-0 shrink-0 items-center rounded-full border border-border/70 bg-secondary/40 px-3 font-mono text-[11px] tracking-wide text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground";
+const chip = "arch-btn shrink-0";
 
 const NAV = [
   { to: "/", label: "גלריות" },
@@ -27,7 +25,6 @@ const NAV = [
 const AppHeader = () => {
   const { canInstall, install } = useInstallPrompt();
   const { theme, toggleTheme } = useTheme();
-  const { isEditMode } = useEditMode();
   const location = useLocation();
   const fetching = useIsFetching();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -55,19 +52,28 @@ const AppHeader = () => {
     toast.success("הקישור הועתק");
   };
 
-  const actions = useMemo(
+  const primary = useMemo(
     () => (
       <>
         <button type="button" onClick={() => setSearchOpen(true)} className={chip} aria-label="חיפוש מהיר">
-          חיפוש מהיר <span className="mr-2 hidden opacity-60 xl:inline">Ctrl K</span>
+          חיפוש <span aria-hidden className="arch-num hidden 2xl:inline">CTRL K</span>
         </button>
         <button type="button" onClick={toggleTheme} className={chip} aria-label="החלפת רקע">
           {theme === "dark" ? "רקע בהיר" : "רקע כהה"}
         </button>
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [theme],
+  );
+
+  const actions = useMemo(
+    () => (
+      <>
         <button type="button" onClick={copyLink} className={chip}>העתקת קישור</button>
         <a href={DEV_CHAT_URL} target="_blank" rel="noreferrer" className={chip}>שיחת הפיתוח</a>
         {canInstall && (
-          <button type="button" onClick={install} className={cn(chip, "border-foreground/60 text-foreground")}>התקנת האפליקציה</button>
+          <button type="button" onClick={install} className={cn(chip, "arch-btn-ink")}>התקנת האפליקציה</button>
         )}
       </>
     ),
@@ -88,64 +94,56 @@ const AppHeader = () => {
               <span className="truncate text-lg font-extralight tracking-tight text-foreground md:text-xl">{APP_NAME}</span>
             </Link>
 
-            <nav className="hidden items-center gap-1 rounded-full border border-border/50 bg-secondary/30 p-1 lg:flex">
-              {NAV.map((item) => (
+            <nav className="hidden items-stretch self-stretch border-x border-border/60 lg:flex" aria-label="ניווט ראשי">
+              {NAV.map((item, i) => (
                 <Link
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    "relative rounded-full px-4 py-1.5 text-sm transition-colors",
-                    isActive(item.to) ? "text-background" : "text-muted-foreground hover:text-foreground",
+                    "group relative flex items-center gap-2 border-l border-border/60 px-5 text-sm font-light transition-colors last:border-l-0",
+                    isActive(item.to) ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
+                  <span aria-hidden className="arch-num">{String(i + 1).padStart(2, "0")}</span>
+                  <span>{item.label}</span>
+                  <span className="absolute inset-x-5 bottom-0 h-px origin-right scale-x-0 bg-foreground/50 transition-transform duration-500 group-hover:scale-x-100" />
                   {isActive(item.to) && (
-                    <motion.span layoutId="nav-pill" className="absolute inset-0 rounded-full bg-foreground" transition={{ type: "spring", stiffness: 380, damping: 32 }} />
+                    <motion.span layoutId="nav-rule" className="absolute inset-x-0 bottom-0 h-[2px] bg-foreground" transition={{ type: "spring", stiffness: 380, damping: 34 }} />
                   )}
-                  <span className="relative">{item.label}</span>
                 </Link>
               ))}
             </nav>
 
-            <AnimatePresence>
-              {isEditMode && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="hidden items-center gap-2 rounded-full border border-foreground/40 px-3 py-1 font-mono text-[11px] text-foreground md:inline-flex"
-                >
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-foreground" />
-                  מצב עריכה
-                </motion.span>
-              )}
-            </AnimatePresence>
+
           </div>
 
           <div className="flex min-w-0 items-center gap-2">
-            <div className="hidden items-center gap-2 md:flex">{actions}</div>
+            <div className="hidden items-center gap-2 md:flex">{primary}</div>
+            <div className="hidden items-center gap-2 xl:flex">{actions}</div>
 
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <button type="button" className={cn(chip, "lg:hidden")} aria-label="תפריט">תפריט</button>
+                <button type="button" className={cn(chip, "xl:hidden")} aria-label="תפריט">תפריט</button>
               </SheetTrigger>
               <SheetContent side="right" className="border-border bg-card" dir="rtl">
                 <SheetTitle className="font-mono text-xs font-normal text-muted-foreground">תפריט</SheetTitle>
                 <SheetDescription className="sr-only">ניווט ופעולות</SheetDescription>
-                <nav className="mt-6 flex flex-col gap-1">
+                <nav className="mt-6 flex flex-col">
                   {NAV.map((item) => (
                     <SheetClose asChild key={item.to}>
                       <Link
                         to={item.to}
                         className={cn(
-                          "rounded-md px-3 py-3 text-lg font-light text-muted-foreground hover:bg-secondary hover:text-foreground",
-                          isActive(item.to) && "bg-secondary text-foreground",
+                          "flex items-baseline gap-3 border-b border-border/60 px-1 py-4 text-2xl font-extralight text-muted-foreground hover:text-foreground",
+                          isActive(item.to) && "text-foreground",
                         )}
                       >
+                        <span aria-hidden className="arch-num">{String(NAV.indexOf(item) + 1).padStart(2, "0")}</span>
                         {item.label}
                       </Link>
                     </SheetClose>
                   ))}
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4 md:hidden">{actions}</div>
+                  <div className="mt-6 flex flex-wrap gap-2"><span className="contents md:hidden">{primary}</span>{actions}</div>
                 </nav>
               </SheetContent>
             </Sheet>

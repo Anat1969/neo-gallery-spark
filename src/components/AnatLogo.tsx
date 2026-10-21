@@ -42,7 +42,7 @@ const AnatLogo = ({ size = 40 }: { size?: number }) => {
         <motion.span
           key={i}
           aria-hidden
-          className="absolute inset-0 rounded-[6px] border"
+          className="absolute inset-0 rounded-none border"
           style={{
             borderColor: `hsl(0 0% ${70 - i * 18}% / ${0.55 - i * 0.15})`,
             background: `linear-gradient(${135 + i * 20}deg, hsl(0 0% ${22 - i * 5}% / 0.9), hsl(0 0% ${8 - i * 2}% / 0.6))`,

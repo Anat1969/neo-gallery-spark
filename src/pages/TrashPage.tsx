@@ -63,7 +63,7 @@ const TrashPage = () => {
                   {KIND[r.table_name] ?? r.table_name} · נמחק {new Date(r.deleted_at).toLocaleString("he-IL")}
                 </p>
               </div>
-              <button type="button" onClick={() => restore(r)} className="h-9 min-h-0 rounded-full border border-border px-4 text-sm hover:bg-secondary">
+              <button type="button" onClick={() => restore(r)} className="arch-btn">
                 שחזור
               </button>
             </motion.div>

@@ -121,7 +121,7 @@ const ScreeningMode = ({ artworks, title, onClose, start = 0 }: { artworks: Wall
           { label: "הבאה", on: () => go(1) },
           { label: "סגירה", on: onClose },
         ].map((b) => (
-          <button key={b.label} type="button" onClick={b.on} className="h-9 min-h-0 rounded-md border border-white/25 bg-black/40 px-3 font-mono text-xs text-white backdrop-blur hover:bg-white/15">
+          <button key={b.label} type="button" onClick={b.on} className="h-9 min-h-0 border border-white/30 bg-black/40 px-3 font-mono text-[11px] tracking-[0.12em] text-white backdrop-blur transition-colors hover:bg-white hover:text-black">
             {b.label}
           </button>
         ))}

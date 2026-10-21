@@ -110,7 +110,7 @@ const SelectItem = React.forwardRef<
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <span className="block h-1.5 w-1.5 rounded-full bg-current" />
+        <span className="block h-1.5 w-1.5 rounded-none bg-current" />
       </SelectPrimitive.ItemIndicator>
     </span>
 

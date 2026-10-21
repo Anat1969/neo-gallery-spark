@@ -106,7 +106,7 @@ const Tile = ({
           px.set(0.5);
           py.set(0.5);
         }}
-        className="relative overflow-hidden rounded-md border border-border/60 bg-card shadow-deep transition-shadow duration-500 group-hover:shadow-[0_40px_80px_-30px_hsl(var(--shadow-deep))]"
+        className="relative overflow-hidden border border-border/60 bg-card shadow-deep transition-shadow duration-500 group-hover:shadow-[0_40px_80px_-30px_hsl(var(--shadow-deep))]"
       >
         <Link to={`/artwork/${artwork.id}`} className="block" draggable={false} aria-label={artwork.title}>
           <MediaThumb item={artwork} natural ratio={ratio} active={hover} />
@@ -124,7 +124,7 @@ const Tile = ({
             aria-pressed={fav}
             aria-label={fav ? "הסרה מהנבחרות" : "הוספה לנבחרות"}
             className={cn(
-              "h-7 min-h-0 rounded-sm px-2 font-mono text-[10px] backdrop-blur transition-all",
+              "h-7 min-h-0 border border-foreground/20 px-2 font-mono text-[10px] tracking-[0.1em] backdrop-blur transition-all",
               fav ? "bg-foreground text-background opacity-100" : "bg-background/70 text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100",
             )}
           >
@@ -133,7 +133,7 @@ const Tile = ({
           {editing && (
             <DropdownMenu dir="rtl">
               <DropdownMenuTrigger asChild>
-                <button type="button" className="h-7 min-h-0 rounded-sm bg-background/85 px-2 font-mono text-[10px] text-foreground backdrop-blur" aria-label={`פעולות על ${artwork.title}`}>
+                <button type="button" className="h-7 min-h-0 border border-foreground/20 bg-background/85 px-2 font-mono text-[10px] tracking-[0.1em] text-foreground backdrop-blur hover:bg-foreground hover:text-background" aria-label={`פעולות על ${artwork.title}`}>
                   פעולות
                 </button>
               </DropdownMenuTrigger>
@@ -151,7 +151,7 @@ const Tile = ({
           )}
         </div>
         {editing && (
-          <span className="absolute left-2 top-2 z-[3] cursor-grab rounded-sm bg-background/85 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur">גרירה</span>
+          <span className="absolute left-2 top-2 z-[3] cursor-grab border border-foreground/20 bg-background/85 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur">גרירה</span>
         )}
       </motion.div>
     </motion.div>
@@ -196,7 +196,7 @@ const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplac
             if (files.length) onUpload(files);
           }}
           className={cn(
-            "mb-5 flex min-h-[220px] break-inside-avoid flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 text-center transition-colors",
+            "mb-5 flex min-h-[220px] break-inside-avoid flex-col items-center justify-center gap-2 border border-dashed p-6 text-center transition-colors",
             over ? "border-foreground bg-secondary text-foreground" : "border-muted-foreground/30 text-muted-foreground hover:border-foreground/60",
           )}
         >

@@ -21,7 +21,7 @@ const MediaViewer = ({ item, className, autoPlay = false }: { item: MediaLike; c
       target="_blank"
       rel="noreferrer"
       download
-      className="inline-flex h-10 items-center rounded-md border border-border bg-card px-4 font-mono text-xs text-foreground hover:bg-secondary"
+      className="arch-btn"
     >
       הורדת הקובץ המקורי
     </a>

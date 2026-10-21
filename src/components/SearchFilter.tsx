@@ -223,7 +223,7 @@ const SearchFilter = () => {
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
               פילטרים
-              {hasActiveFilters && <span className="mr-1 h-2 w-2 rounded-full bg-primary" />}
+              {hasActiveFilters && <span className="mr-1 h-2 w-2 rounded-none bg-primary" />}
             </Button>
           </CollapsibleTrigger>
           {hasActiveFilters && (
@@ -243,7 +243,7 @@ const SearchFilter = () => {
                   <button
                     key={category}
                     onClick={() => toggleCategory(category)}
-                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    className={`rounded-none px-3.5 py-1.5 text-sm font-medium transition-colors ${
                       active
                         ? "bg-primary text-primary-foreground"
                         : "border border-muted-foreground/40 text-foreground hover:border-foreground"
@@ -359,7 +359,7 @@ const SearchFilter = () => {
                   decoding="async"
                   className="h-full w-full object-cover transition-transform group-hover:scale-105"
                 />
-                <span className="absolute left-3 top-3 rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
+                <span className="absolute left-3 top-3 rounded-none bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
                   {r.category}
                 </span>
               </div>
