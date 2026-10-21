@@ -4,44 +4,44 @@
 
 @layer base {
   :root {
-    --background: 240 10% 4%;
-    --foreground: 0 0% 94%;
+    --background: 30 4% 6%;
+    --foreground: 40 10% 93%;
 
-    --card: 240 10% 8%;
-    --card-foreground: 0 0% 94%;
+    --card: 30 4% 9%;
+    --card-foreground: 40 10% 93%;
 
-    --popover: 240 10% 8%;
-    --popover-foreground: 0 0% 94%;
+    --popover: 30 4% 10%;
+    --popover-foreground: 40 10% 93%;
 
-    --primary: 76 90% 61%;
-    --primary-foreground: 240 10% 4%;
+    --primary: 40 12% 86%;
+    --primary-foreground: 30 4% 7%;
 
-    --secondary: 240 10% 12%;
-    --secondary-foreground: 0 0% 94%;
+    --secondary: 30 3% 14%;
+    --secondary-foreground: 40 10% 93%;
 
-    --muted: 240 10% 12%;
-    --muted-foreground: 240 6% 46%;
+    --muted: 30 3% 14%;
+    --muted-foreground: 35 5% 64%;
 
-    --accent: 76 90% 61%;
-    --accent-foreground: 240 10% 4%;
+    --accent: 40 12% 86%;
+    --accent-foreground: 30 4% 7%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 94%;
 
-    --border: 240 6% 20%;
-    --input: 240 6% 20%;
-    --ring: 76 90% 61%;
+    --border: 30 3% 22%;
+    --input: 30 3% 24%;
+    --ring: 40 12% 70%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 240 10% 6%;
     --sidebar-foreground: 0 0% 94%;
-    --sidebar-primary: 76 90% 61%;
+    --sidebar-primary: 40 12% 86%;
     --sidebar-primary-foreground: 240 10% 4%;
     --sidebar-accent: 240 10% 12%;
     --sidebar-accent-foreground: 0 0% 94%;
     --sidebar-border: 240 6% 20%;
-    --sidebar-ring: 76 90% 61%;
+    --sidebar-ring: 40 12% 70%;
   }
 }
 
@@ -56,6 +56,20 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 85% -10%, hsl(40 10% 30% / 0.18), transparent 60%),
+      radial-gradient(900px 500px at 0% 110%, hsl(30 6% 24% / 0.22), transparent 60%),
+      linear-gradient(180deg, hsl(30 4% 7%), hsl(30 4% 5%));
+    background-attachment: fixed;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    letter-spacing: -0.01em;
+  }
+
+  .font-mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
   }
 
   /* Button min-height */
@@ -71,4 +85,29 @@
   .art-grid {
     @apply grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4;
   }
+}
+
+/* Fixed top bar: glass plane with depth */
+.app-header {
+  background: linear-gradient(180deg, hsl(30 4% 8% / 0.92), hsl(30 4% 6% / 0.82));
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.9), inset 0 -1px 0 hsl(40 10% 90% / 0.04);
+}
+
+/* Background planes on the login screen */
+.login-planes {
+  position: absolute;
+  inset: -20%;
+  background:
+    repeating-linear-gradient(90deg, hsl(40 10% 90% / 0.035) 0 1px, transparent 1px 96px),
+    repeating-linear-gradient(0deg, hsl(40 10% 90% / 0.035) 0 1px, transparent 1px 96px);
+  transform: perspective(900px) rotateX(58deg) translateY(10%);
+  mask-image: radial-gradient(closest-side, black, transparent);
+  animation: planes-drift 24s linear infinite;
+}
+@keyframes planes-drift {
+  to { background-position: 0 96px, 96px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-planes { animation: none; }
 }

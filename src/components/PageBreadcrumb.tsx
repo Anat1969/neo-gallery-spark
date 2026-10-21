@@ -1,5 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, Home } from "lucide-react";
 
 export interface Crumb {
   label: string;
@@ -26,14 +25,14 @@ const PageBreadcrumb = ({ crumbs, sticky = true }: PageBreadcrumbProps) => {
         title="דף הבית"
         className="flex items-center transition-colors hover:text-primary"
       >
-        <Home className="h-3.5 w-3.5" />
+        בית
       </button>
 
       {crumbs.map((crumb, i) => {
         const isLast = i === crumbs.length - 1;
         return (
           <span key={i} className="flex items-center gap-1">
-            <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
+            <span aria-hidden="true" className="shrink-0 text-muted-foreground">/</span>
             {crumb.to && !isLast ? (
               <button
                 onClick={() => navigate(crumb.to!)}

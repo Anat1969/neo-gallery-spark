@@ -31,20 +31,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, email, display_name, avatar_url")
-      .eq("id", userId)
-      .single();
-    setProfile(data);
+  const buildProfile = useCallback((u: User): Profile => {
+    const meta = (u.user_metadata ?? {}) as Record<string, string | undefined>;
+    return {
+      id: u.id,
+      email: u.email ?? null,
+      display_name: meta.full_name ?? meta.name ?? (u.email ? u.email.split("@")[0] : null),
+      avatar_url: meta.avatar_url ?? meta.picture ?? null,
+    };
   }, []);
 
-  const fetchRole = useCallback(async (userId: string) => {
-    const { data } = await supabase.rpc("has_role", {
-      _user_id: userId,
-      _role: "admin",
-    });
+  const fetchRole = useCallback(async () => {
+    const { data } = await supabase.rpc("neo_is_admin");
     setIsAdmin(!!data);
   }, []);
 
@@ -52,10 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     async (session: Session | null) => {
       if (session?.user) {
         setUser(session.user);
-        await Promise.all([
-          fetchProfile(session.user.id),
-          fetchRole(session.user.id),
-        ]);
+        setProfile(buildProfile(session.user));
+        await fetchRole();
       } else {
         setUser(null);
         setProfile(null);
@@ -63,14 +59,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setIsLoading(false);
     },
-    [fetchProfile, fetchRole]
+    [buildProfile, fetchRole]
   );
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION on setup — no need for separate getSession
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        handleSession(session);
+        // Defer: calling Supabase inside the auth callback can deadlock the client
+        setTimeout(() => handleSession(session), 0);
       }
     );
 

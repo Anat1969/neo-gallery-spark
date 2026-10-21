@@ -18,7 +18,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Search, ChevronDown, X, ArrowRight } from "lucide-react";
 
 interface SearchResult {
   id: string;
@@ -62,9 +61,9 @@ const SearchFilter = () => {
     queryKey: ["search-artworks"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("artworks")
+        .from("neo_artworks")
         .select(
-          "id, title, topic, image_url, style, year, tags, gallery_id, gallery:galleries(id, name, slug, category)",
+          "id, title, topic, image_url, style, year, tags, gallery_id, gallery:neo_galleries(id, name, slug, category)",
         );
 
       if (error) throw error;
@@ -196,25 +195,24 @@ const SearchFilter = () => {
         onClick={() => navigate("/")}
         className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
       >
-        <ArrowRight className="h-4 w-4" />
         חזרה
       </Button>
 
       <div className="relative mb-4">
-        <Search className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="חפשי יצירה..."
-          className="h-[52px] w-full rounded-lg border border-muted-foreground/30 bg-secondary pr-12 pl-4 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
+          className="h-[52px] w-full rounded-lg border border-muted-foreground/30 bg-secondary pr-4 pl-16 text-base text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-primary"
         />
         {query && (
           <button
             onClick={() => setQuery("")}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="ניקוי החיפוש"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            ניקוי
           </button>
         )}
       </div>
@@ -223,7 +221,6 @@ const SearchFilter = () => {
         <div className="flex items-center justify-between">
           <CollapsibleTrigger asChild>
             <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
-              <ChevronDown className={`h-4 w-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`} />
               פילטרים
               {hasActiveFilters && <span className="mr-1 h-2 w-2 rounded-full bg-primary" />}
             </Button>

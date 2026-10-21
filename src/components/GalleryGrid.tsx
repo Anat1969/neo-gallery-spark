@@ -31,7 +31,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ImageIcon, Pencil, Trash2, Plus } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -84,14 +83,14 @@ const GalleryGrid = () => {
     queryKey: ["galleries"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("galleries")
-        .select("id, name, slug, description, category, cover_image, sort_order, updated_at, artworks(count)")
+        .from("neo_galleries")
+        .select("id, name, slug, description, category, cover_image, sort_order, updated_at, artworks:neo_artworks(count)")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
 
       const { data: activity } = await supabase
-        .from("artworks")
+        .from("neo_artworks")
         .select("gallery_id, created_at")
         .order("created_at", { ascending: false });
 
@@ -173,7 +172,7 @@ const GalleryGrid = () => {
     try {
       if (editingGallery) {
         const { error } = await supabase
-          .from("galleries")
+          .from("neo_galleries")
           .update({
             name: form.name,
             slug: normalizedSlug,
@@ -187,7 +186,7 @@ const GalleryGrid = () => {
         toast({ title: "הגלריה עודכנה" });
       } else {
         const { data: maxRow } = await supabase
-          .from("galleries")
+          .from("neo_galleries")
           .select("sort_order")
           .order("sort_order", { ascending: false })
           .limit(1)
@@ -195,7 +194,7 @@ const GalleryGrid = () => {
 
         const nextSortOrder = (maxRow?.sort_order ?? -1) + 1;
 
-        const { error } = await supabase.from("galleries").insert({
+        const { error } = await supabase.from("neo_galleries").insert({
           name: form.name,
           slug: normalizedSlug,
           description: form.description,
@@ -221,7 +220,7 @@ const GalleryGrid = () => {
   const handleDeleteGallery = async () => {
     if (!deleteTarget) return;
 
-    const { error } = await supabase.from("galleries").delete().eq("id", deleteTarget.id);
+    const { error } = await supabase.from("neo_galleries").delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
@@ -263,7 +262,7 @@ const GalleryGrid = () => {
                     className="text-sm font-medium"
                     inputClassName="text-sm h-6 w-24"
                     onSave={async (newName) => {
-                      const { error } = await supabase.from("categories").update({ name: newName }).eq("id", catObj.id);
+                      const { error } = await supabase.from("neo_categories").update({ name: newName }).eq("id", catObj.id);
                       if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
                       queryClient.invalidateQueries({ queryKey: ["categories"] });
                       queryClient.invalidateQueries({ queryKey: ["galleries"] });
@@ -309,13 +308,9 @@ const GalleryGrid = () => {
 
       {!isLoading && !isError && galleries.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-            <ImageIcon className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <p className="text-center text-lg text-muted-foreground">עדיין אין גלריות — לחצי + כדי להתחיל</p>
+          <p className="text-center text-lg text-muted-foreground">עדיין אין גלריות — לחצי "גלריה חדשה" כדי להתחיל</p>
           {isEditMode && (
             <Button onClick={openNewGallery} className="gap-2">
-              <Plus className="h-4 w-4" />
               גלריה חדשה
             </Button>
           )}
@@ -327,7 +322,6 @@ const GalleryGrid = () => {
           {isEditMode && (
             <div className="mb-4 flex justify-end">
               <Button onClick={openNewGallery} className="gap-2">
-                <Plus className="h-4 w-4" />
                 גלריה חדשה
               </Button>
             </div>
@@ -341,28 +335,30 @@ const GalleryGrid = () => {
                 className="group relative overflow-hidden rounded-lg border border-border bg-card text-right transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
               >
                 {isEditMode && (
-                  <div className="absolute right-2 top-2 z-10 flex gap-1">
+                  <div className="absolute right-2 top-2 z-10 flex flex-wrap gap-1">
                     <span
                       role="button"
+                      aria-label="עריכת גלריה"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         openEditGallery(gallery);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
+                      className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary"
                     >
-                      <Pencil className="h-3.5 w-3.5" />
+                      עריכה
                     </span>
                     <span
                       role="button"
+                      aria-label="מחיקת גלריה"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         setDeleteTarget(gallery);
                       }}
-                      className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive"
+                      className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      מחיקה
                     </span>
                   </div>
                 )}
@@ -386,7 +382,7 @@ const GalleryGrid = () => {
                     className="text-base font-semibold text-foreground"
                     inputClassName="text-base font-semibold w-full"
                     onSave={async (newName) => {
-                      const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                      const { error } = await supabase.from("neo_galleries").update({ name: newName }).eq("id", gallery.id);
                       if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
                       refresh();
                       toast({ title: "שם הגלריה עודכן" });

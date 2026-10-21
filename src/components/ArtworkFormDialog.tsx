@@ -20,7 +20,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, X } from "lucide-react";
 import ImageDropZone from "@/components/ImageDropZone";
 
 interface ArtworkFormData {
@@ -76,7 +75,7 @@ const ArtworkFormDialog = ({
     queryKey: ["galleries-for-artwork-form"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("galleries")
+        .from("neo_galleries")
         .select("id, name")
         .order("sort_order", { ascending: true });
 
@@ -154,7 +153,7 @@ const ArtworkFormDialog = ({
     try {
       if (isEditing && artwork?.id) {
         const { error } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .update(payload)
           .eq("id", artwork.id);
 
@@ -162,7 +161,7 @@ const ArtworkFormDialog = ({
         toast({ title: "היצירה עודכנה" });
       } else {
         const { data: maxRow } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .select("sort_order")
           .eq("gallery_id", selectedGalleryId)
           .order("sort_order", { ascending: false })
@@ -172,7 +171,7 @@ const ArtworkFormDialog = ({
         const nextOrder = (maxRow?.sort_order ?? -1) + 1;
 
         const { error } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .insert({ ...payload, sort_order: nextOrder });
 
         if (error) throw error;
@@ -190,7 +189,7 @@ const ArtworkFormDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-card text-foreground sm:max-w-lg" dir="rtl">
+      <DialogContent className="overflow-y-auto border-border bg-card text-foreground sm:max-w-lg" dir="rtl">
         <DialogHeader>
           <DialogTitle>{isEditing ? "עריכת יצירה" : "יצירה חדשה"}</DialogTitle>
         </DialogHeader>
@@ -278,8 +277,8 @@ const ArtworkFormDialog = ({
                     className="inline-flex items-center gap-1 rounded-full border border-primary px-2 py-0.5 text-xs text-primary"
                   >
                     {tag}
-                    <button onClick={() => removeTag(tag)} className="hover:text-destructive">
-                      <X className="h-3 w-3" />
+                    <button onClick={() => removeTag(tag)} aria-label={`הסרת התגית ${tag}`} className="text-muted-foreground hover:text-destructive">
+                      הסרה
                     </button>
                   </span>
                 ))}
@@ -333,8 +332,7 @@ const ArtworkFormDialog = ({
             ביטול
           </Button>
           <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-            {isEditing ? "עדכון" : "צור יצירה"}
+            {saving ? "שומרת..." : isEditing ? "עדכון" : "צור יצירה"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -14,7 +14,7 @@ export function useCategories() {
     queryKey: ["categories"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
+        .from("neo_categories")
         .select("id, name, sort_order, project_name, app_name")
         .order("sort_order", { ascending: true });
 

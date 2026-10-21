@@ -1,40 +1,32 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Sheet,
-  SheetClose,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogIn, Heart, Settings, LogOut, Menu, Search } from "lucide-react";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import AnatLogo from "@/components/AnatLogo";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+export const APP_NAME = "ART-AI גלריה";
+export const DEV_CHAT_URL = "https://claude.ai/code/session_01S9BWDcyE3q4wF5HXv6WniZ";
+
+const chip =
+  "inline-flex h-9 min-h-0 shrink-0 items-center rounded-md border border-border/70 bg-secondary/40 px-3 font-mono text-[12px] tracking-wide text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground";
 
 const AppHeader = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
+  const { canInstall, install } = useInstallPrompt();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const initials = (profile?.display_name ?? profile?.email ?? "U")
-    .slice(0, 2)
-    .toUpperCase();
-
   const navItems = useMemo(
     () => [
       { to: "/", label: "גלריות" },
-      { to: "/search", label: "חיפוש", icon: Search },
-      { to: "/favorites", label: "מועדפים", icon: Heart },
-      ...(isAdmin ? [{ to: "/admin", label: "ניהול", icon: Settings }] : []),
+      { to: "/search", label: "חיפוש" },
+      { to: "/favorites", label: "מועדפים" },
+      ...(isAdmin ? [{ to: "/admin", label: "ניהול" }] : []),
     ],
     [isAdmin],
   );
@@ -42,151 +34,107 @@ const AppHeader = () => {
   const isActive = (to: string) =>
     to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
 
+  const copyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = url;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    toast.success("הקישור הועתק");
+  };
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
     setMobileOpen(false);
   };
 
-  return (
-    <header
-      className="sticky top-0 z-40 border-b border-border bg-background/90 px-4 py-3 backdrop-blur-sm md:px-8"
-      dir="rtl"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 md:gap-6">
-          <button
-            onClick={() => navigate("/")}
-            className="text-lg font-bold text-foreground"
-          >
-            ART-AI
-          </button>
+  const actions = (
+    <>
+      <button type="button" onClick={copyLink} className={chip}>העתקת קישור</button>
+      <a href={DEV_CHAT_URL} target="_blank" rel="noreferrer" className={chip}>שיחת הפיתוח</a>
+      {canInstall && (
+        <button type="button" onClick={install} className={cn(chip, "border-foreground/50 text-foreground")}>התקנת האפליקציה</button>
+      )}
+    </>
+  );
 
-          <nav className="hidden items-center gap-1 md:flex">
+  return (
+    <header className="app-header fixed inset-x-0 top-0 z-[60] h-16 border-b border-border/60" dir="rtl">
+      <div className="mx-auto grid h-full max-w-[1600px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 md:px-8">
+        <div className="flex min-w-0 items-center gap-4 md:gap-8">
+          <Link to="/" className="flex min-w-0 items-center gap-3" aria-label={`${APP_NAME}, דף הבית`}>
+            <AnatLogo size={30} />
+            <span className="truncate text-lg font-extralight tracking-tight text-foreground md:text-xl">{APP_NAME}</span>
+          </Link>
+
+          <nav className="hidden items-center gap-1 lg:flex">
             {navItems.map((item) => (
-              <Button
+              <Link
                 key={item.to}
-                variant="ghost"
-                onClick={() => navigate(item.to)}
+                to={item.to}
                 className={cn(
-                  "h-9 px-3 text-sm text-muted-foreground hover:text-foreground",
-                  isActive(item.to) && "bg-secondary text-foreground",
+                  "relative px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground",
+                  isActive(item.to) && "text-foreground",
                 )}
               >
                 {item.label}
-              </Button>
+                {isActive(item.to) && (
+                  <motion.span layoutId="nav-underline" className="absolute inset-x-2 -bottom-px h-px bg-foreground" />
+                )}
+              </Link>
             ))}
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
-          {!user ? (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/login")}
-                className="hidden gap-2 border-primary text-primary hover:bg-primary/10 md:inline-flex"
-              >
-                <LogIn className="h-4 w-4" />
-                כניסה / הרשמה
-              </Button>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">{actions}</div>
 
-              <Button
-                variant="outline"
-                onClick={() => navigate("/login")}
-                className="gap-2 border-primary text-primary hover:bg-primary/10 md:hidden"
-              >
-                <LogIn className="h-4 w-4" />
-              </Button>
-            </>
+          {!user ? (
+            <Link to="/login" className={cn(chip, "hidden md:inline-flex")}>כניסה</Link>
           ) : (
-            <DropdownMenu dir="rtl">
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-secondary">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={profile?.avatar_url ?? undefined} />
-                    <AvatarFallback className="bg-primary text-xs text-primary-foreground">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="hidden max-w-[180px] truncate text-sm font-medium text-foreground md:inline">
-                    {profile?.display_name ?? profile?.email}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem
-                  onClick={() => navigate("/favorites")}
-                  className="cursor-pointer gap-2"
-                >
-                  <Heart className="h-4 w-4" />
-                  המועדפים שלי
-                </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem
-                    onClick={() => navigate("/admin")}
-                    className="cursor-pointer gap-2"
-                  >
-                    <Settings className="h-4 w-4" />
-                    ניהול
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleSignOut}
-                  className="cursor-pointer gap-2 text-destructive"
-                >
-                  <LogOut className="h-4 w-4" />
-                  התנתקי
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button type="button" onClick={handleSignOut} className={cn(chip, "hidden md:inline-flex")} title={profile?.email ?? ""}>
+              יציאה
+            </button>
           )}
 
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="תפריט">
-                <Menu className="h-5 w-5" />
-              </Button>
+              <button type="button" className={cn(chip, "lg:hidden")} aria-label="תפריט">תפריט</button>
             </SheetTrigger>
             <SheetContent side="right" className="border-border bg-card" dir="rtl">
-              <nav className="mt-8 flex flex-col gap-2">
+              <SheetTitle className="font-mono text-xs font-normal text-muted-foreground">תפריט</SheetTitle>
+              <SheetDescription className="sr-only">ניווט ופעולות</SheetDescription>
+              <nav className="mt-6 flex flex-col gap-1">
                 {navItems.map((item) => (
                   <SheetClose asChild key={item.to}>
-                    <Button
-                      variant="ghost"
-                      onClick={() => navigate(item.to)}
+                    <Link
+                      to={item.to}
                       className={cn(
-                        "justify-start text-base text-muted-foreground hover:text-foreground",
+                        "rounded-md px-3 py-3 text-base text-muted-foreground hover:bg-secondary hover:text-foreground",
                         isActive(item.to) && "bg-secondary text-foreground",
                       )}
                     >
                       {item.label}
-                    </Button>
+                    </Link>
                   </SheetClose>
                 ))}
-
-                {!user ? (
-                  <SheetClose asChild>
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate("/login")}
-                      className="mt-2 justify-start gap-2 border-primary text-primary hover:bg-primary/10"
-                    >
-                      <LogIn className="h-4 w-4" />
-                      כניסה / הרשמה
-                    </Button>
-                  </SheetClose>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={handleSignOut}
-                    className="mt-2 justify-start gap-2 border-destructive text-destructive hover:bg-destructive/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    התנתקי
-                  </Button>
-                )}
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4 md:hidden">{actions}</div>
+                <div className="mt-2 md:hidden">
+                  {!user ? (
+                    <SheetClose asChild>
+                      <Link to="/login" className={chip}>כניסה</Link>
+                    </SheetClose>
+                  ) : (
+                    <button type="button" onClick={handleSignOut} className={chip}>יציאה</button>
+                  )}
+                </div>
               </nav>
             </SheetContent>
           </Sheet>

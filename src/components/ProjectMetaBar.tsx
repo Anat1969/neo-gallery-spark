@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { ExternalLink, Save, Sparkles } from "lucide-react";
 
 type MetaTable = "galleries" | "categories" | "rooms";
 
@@ -48,7 +47,7 @@ const ProjectMetaBar = ({
   const save = async () => {
     setSaving(true);
     const { error } = await supabase
-      .from(table)
+      .from(`neo_${table}` as "neo_galleries")
       .update({ project_name: project.trim(), app_name: url.trim() })
       .eq("id", rowId);
     setSaving(false);
@@ -68,7 +67,6 @@ const ProjectMetaBar = ({
 
     return (
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground" dir="rtl">
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
         <span>{label}</span>
         {hasProject && <span className="text-foreground/90">{projectName}</span>}
         {hasUrl && (
@@ -79,7 +77,6 @@ const ProjectMetaBar = ({
             className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
           >
             קישור לאפליקציה
-            <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}
       </div>
@@ -114,7 +111,6 @@ const ProjectMetaBar = ({
         className="h-10 gap-1"
         title="שמירת שם הפרויקט והקישור"
       >
-        <Save className="h-4 w-4" />
         {saving ? "שומרת..." : "שמירה"}
       </Button>
     </div>

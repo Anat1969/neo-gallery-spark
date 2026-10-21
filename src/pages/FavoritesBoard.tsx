@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Heart, Share2, X, ArrowRight, LogIn } from "lucide-react";
 
 interface FavoriteItem {
   id: string;
@@ -31,8 +30,8 @@ const FavoritesBoard = () => {
     queryKey: ["favorites", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("favorites" as any)
-        .select("id, artwork_id, artwork:artworks(id, title, image_url, gallery:galleries(name, slug))")
+        .from("neo_favorites" as any)
+        .select("id, artwork_id, artwork:neo_artworks(id, title, image_url, gallery:neo_galleries(name, slug))")
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
 
@@ -57,7 +56,7 @@ const FavoritesBoard = () => {
       if (!user) return;
 
       const { error } = await supabase
-        .from("favorites" as any)
+        .from("neo_favorites" as any)
         .delete()
         .eq("id", id)
         .eq("user_id", user.id);
@@ -101,17 +100,12 @@ const FavoritesBoard = () => {
           onClick={() => navigate("/")}
           className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
         >
-          <ArrowRight className="h-4 w-4" />
           חזרה לגלריות
         </Button>
 
         <div className="flex flex-col items-center justify-center gap-5 py-24">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-            <LogIn className="h-8 w-8 text-muted-foreground" />
-          </div>
           <p className="text-lg text-muted-foreground">התחברי כדי לשמור מועדפים</p>
           <Button onClick={() => navigate("/login")} className="gap-2">
-            <LogIn className="h-4 w-4" />
             התחברי / הירשמי
           </Button>
         </div>
@@ -126,7 +120,6 @@ const FavoritesBoard = () => {
         onClick={() => navigate("/")}
         className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
       >
-        <ArrowRight className="h-4 w-4" />
         חזרה לגלריות
       </Button>
 
@@ -158,9 +151,6 @@ const FavoritesBoard = () => {
 
       {!isLoading && !isError && favorites.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-5 py-24">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-            <Heart className="h-8 w-8 text-muted-foreground" />
-          </div>
           <p className="text-lg text-muted-foreground">עדיין לא שמרת יצירות</p>
           <Button onClick={() => navigate("/")} className="gap-2">
             גלשי בגלריות
@@ -178,7 +168,6 @@ const FavoritesBoard = () => {
               </span>
             </div>
             <Button variant="ghost" onClick={handleShareList} className="gap-2 text-muted-foreground hover:text-primary">
-              <Share2 className="h-4 w-4" />
               שתפי רשימה
             </Button>
           </div>
@@ -191,9 +180,10 @@ const FavoritesBoard = () => {
               >
                 <button
                   onClick={() => removeFavorite(fav.id)}
-                  className="absolute left-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/70 text-destructive opacity-100 backdrop-blur-sm transition-opacity md:opacity-0 md:group-hover:opacity-100"
+                  aria-label="הסרה מהמועדפים"
+                  className="absolute left-3 top-3 z-10 flex h-8 items-center justify-center rounded-full bg-background/70 px-2 text-xs text-destructive opacity-100 backdrop-blur-sm transition-opacity md:opacity-0 md:group-hover:opacity-100"
                 >
-                  <X className="h-4 w-4" />
+                  הסרה
                 </button>
 
                 <button onClick={() => navigate(`/artwork/${fav.artworkId}`)} className="w-full text-right">

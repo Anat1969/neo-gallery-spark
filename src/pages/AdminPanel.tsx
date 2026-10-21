@@ -34,19 +34,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { slugify, uniqueSlug, friendlyDbError } from "@/lib/slug";
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  ExternalLink,
-  X,
-  ArrowRight,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  Search,
-  Save,
-} from "lucide-react";
 import { useCategories } from "@/hooks/useCategories";
 import ImageDropZone from "@/components/ImageDropZone";
 
@@ -100,10 +87,10 @@ const SortableHeader = ({ label, active, direction, onSort }: SortableHeaderProp
       aria-label={`מיון לפי ${label}`}
     >
       {label}
-      {active ? (
-        direction === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-      ) : (
-        <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
+      {active && (
+        <span className="text-xs font-normal text-muted-foreground">
+          {direction === "asc" ? "עולה" : "יורד"}
+        </span>
       )}
     </Button>
   </th>
@@ -147,8 +134,8 @@ const AdminPanel = () => {
     queryKey: ["admin-galleries"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("galleries")
-        .select("id, name, slug, description, category, cover_image, sort_order, project_name, app_name, artworks(count)")
+        .from("neo_galleries")
+        .select("id, name, slug, description, category, cover_image, sort_order, project_name, app_name, artworks:neo_artworks(count)")
         .order("sort_order", { ascending: true });
 
       if (error) throw error;
@@ -172,9 +159,9 @@ const AdminPanel = () => {
     queryKey: ["admin-artworks"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("artworks")
+        .from("neo_artworks")
         .select(
-          "id, gallery_id, title, topic, post, image_url, tags, style, concept, year, inspiration_url, gallery:galleries(name)",
+          "id, gallery_id, title, topic, post, image_url, tags, style, concept, year, inspiration_url, gallery:neo_galleries(name)",
         )
         .order("created_at", { ascending: false });
 
@@ -263,7 +250,7 @@ const AdminPanel = () => {
     try {
       if (editingCat) {
         const { error } = await supabase
-          .from("categories")
+          .from("neo_categories")
           .update({ name: catName.trim(), project_name: catProjectName.trim(), app_name: catAppName.trim() })
           .eq("id", editingCat.id);
         if (error) throw error;
@@ -271,7 +258,7 @@ const AdminPanel = () => {
       } else {
         const maxOrder = categoriesData.length > 0 ? Math.max(...categoriesData.map((c) => c.sort_order)) + 1 : 0;
         const { error } = await supabase
-          .from("categories")
+          .from("neo_categories")
           .insert({ name: catName.trim(), sort_order: maxOrder, project_name: catProjectName.trim(), app_name: catAppName.trim() });
         if (error) throw error;
         toast({ title: "הקטגוריה נוצרה" });
@@ -286,7 +273,7 @@ const AdminPanel = () => {
   };
 
   const deleteCategory = async (id: string) => {
-    const { error } = await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase.from("neo_categories").delete().eq("id", id);
     if (error) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
       return;
@@ -304,7 +291,7 @@ const AdminPanel = () => {
     setSavingMetadataId(`category-${category.id}`);
     try {
       const { error } = await supabase
-        .from("categories")
+        .from("neo_categories")
         .update({ project_name: draft.projectName.trim(), app_name: draft.appName.trim() })
         .eq("id", category.id);
       if (error) throw error;
@@ -361,7 +348,7 @@ const AdminPanel = () => {
     try {
       if (editingGallery) {
         const { error } = await supabase
-          .from("galleries")
+          .from("neo_galleries")
           .update({
             name: gForm.name,
             slug: normalizedSlug,
@@ -377,13 +364,13 @@ const AdminPanel = () => {
         toast({ title: "הגלריה עודכנה" });
       } else {
         const { data: maxRow } = await supabase
-          .from("galleries")
+          .from("neo_galleries")
           .select("sort_order")
           .order("sort_order", { ascending: false })
           .limit(1)
           .maybeSingle();
 
-        const { error } = await supabase.from("galleries").insert({
+        const { error } = await supabase.from("neo_galleries").insert({
           name: gForm.name,
           slug: normalizedSlug,
           description: gForm.description,
@@ -414,7 +401,7 @@ const AdminPanel = () => {
     setSavingMetadataId(`gallery-${gallery.id}`);
     try {
       const { error } = await supabase
-        .from("galleries")
+        .from("neo_galleries")
         .update({ project_name: draft.projectName.trim(), app_name: draft.appName.trim() })
         .eq("id", gallery.id);
       if (error) throw error;
@@ -433,7 +420,7 @@ const AdminPanel = () => {
   };
 
   const deleteGallery = async (id: string) => {
-    const { error } = await supabase.from("galleries").delete().eq("id", id);
+    const { error } = await supabase.from("neo_galleries").delete().eq("id", id);
 
     if (error) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
@@ -503,7 +490,7 @@ const AdminPanel = () => {
     try {
       if (editingArtwork) {
         const { error } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .update(payload)
           .eq("id", editingArtwork.id);
 
@@ -511,7 +498,7 @@ const AdminPanel = () => {
         toast({ title: "היצירה עודכנה" });
       } else {
         const { data: maxRow } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .select("sort_order")
           .eq("gallery_id", aForm.galleryId)
           .order("sort_order", { ascending: false })
@@ -519,7 +506,7 @@ const AdminPanel = () => {
           .maybeSingle();
 
         const { error } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .insert({ ...payload, sort_order: (maxRow?.sort_order ?? -1) + 1 });
 
         if (error) throw error;
@@ -534,7 +521,7 @@ const AdminPanel = () => {
   };
 
   const deleteArtwork = async (id: string) => {
-    const { error } = await supabase.from("artworks").delete().eq("id", id);
+    const { error } = await supabase.from("neo_artworks").delete().eq("id", id);
 
     if (error) {
       toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
@@ -604,7 +591,6 @@ const AdminPanel = () => {
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
-            <ArrowRight className="h-4 w-4" />
             חזרה
           </Button>
           <h1 className="text-3xl font-bold text-foreground md:text-4xl">ניהול</h1>
@@ -617,7 +603,6 @@ const AdminPanel = () => {
         <div className="flex flex-col items-center justify-center gap-4 py-24">
           <p className="text-lg text-muted-foreground">אין תוכן עדיין — צרי את הגלריה הראשונה שלך</p>
           <Button onClick={openNewGallery} className="gap-2">
-            <Plus className="h-4 w-4" />
             גלריה חדשה
           </Button>
         </div>
@@ -634,11 +619,9 @@ const AdminPanel = () => {
           <TabsContent value="galleries">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="relative w-full sm:w-80">
-                <Search className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input value={gallerySearch} onChange={(event) => setGallerySearch(event.target.value)} placeholder="חיפוש גלריה, קטגוריה, פרויקט או אפליקציה" className="h-12 pr-11 text-base" />
+                <Input value={gallerySearch} onChange={(event) => setGallerySearch(event.target.value)} placeholder="חיפוש גלריה, קטגוריה, פרויקט או אפליקציה" className="h-12 pr-3 text-base" />
               </div>
               <Button onClick={openNewGallery} className="gap-2">
-                <Plus className="h-4 w-4" />
                 גלריה חדשה
               </Button>
             </div>
@@ -695,24 +678,23 @@ const AdminPanel = () => {
                         <div className="flex gap-1">
                            <Button
                              type="button"
-                             size="icon"
                              variant="ghost"
                              onClick={() => void saveGalleryMetadata(g)}
                              disabled={!galleryMetadataDrafts[g.id] || savingMetadataId === `gallery-${g.id}`}
                              title="שמירת שם הפרויקט וקישור לאפליקציה"
                              aria-label={`שמירת פרטי ${g.name}`}
-                             className="h-9 w-9 text-muted-foreground hover:text-primary"
+                             className="h-9 px-2 text-xs text-muted-foreground hover:text-primary"
                            >
-                             <Save className="h-4 w-4" />
+                             שמירה
                            </Button>
-                          <button onClick={() => openEditGallery(g)} title="עריכת פרטי הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
-                            <Pencil className="h-4 w-4" />
+                          <button onClick={() => openEditGallery(g)} title="עריכת פרטי הגלריה" aria-label="עריכת פרטי הגלריה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary">
+                            עריכה
                           </button>
-                          <button onClick={() => navigate(`/gallery/${g.slug}`)} title="צפייה בגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
-                            <ExternalLink className="h-4 w-4" />
+                          <button onClick={() => navigate(`/gallery/${g.slug}`)} title="צפייה בגלריה" aria-label="צפייה בגלריה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary">
+                            צפייה
                           </button>
-                          <button onClick={() => setDeleteTarget({ type: "gallery", id: g.id, name: g.name })} title="מחיקת הגלריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
+                          <button onClick={() => setDeleteTarget({ type: "gallery", id: g.id, name: g.name })} title="מחיקת הגלריה" aria-label="מחיקת הגלריה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-destructive">
+                            מחיקה
                           </button>
                         </div>
                       </td>
@@ -739,7 +721,6 @@ const AdminPanel = () => {
                 </SelectContent>
               </Select>
               <Button onClick={openNewArtwork} className="gap-2">
-                <Plus className="h-4 w-4" />
                 יצירה חדשה
               </Button>
             </div>
@@ -771,11 +752,11 @@ const AdminPanel = () => {
                         <td className="px-5 py-4 text-foreground">{a.galleryName}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            <button onClick={() => openEditArtwork(a)} title="עריכת פרטי היצירה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
-                              <Pencil className="h-4 w-4" />
+                            <button onClick={() => openEditArtwork(a)} title="עריכת פרטי היצירה" aria-label="עריכת פרטי היצירה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary">
+                              עריכה
                             </button>
-                            <button onClick={() => setDeleteTarget({ type: "artwork", id: a.id, name: a.title })} title="מחיקת היצירה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
-                              <Trash2 className="h-4 w-4" />
+                            <button onClick={() => setDeleteTarget({ type: "artwork", id: a.id, name: a.title })} title="מחיקת היצירה" aria-label="מחיקת היצירה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-destructive">
+                              מחיקה
                             </button>
                           </div>
                         </td>
@@ -790,11 +771,9 @@ const AdminPanel = () => {
           <TabsContent value="categories">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div className="relative w-full sm:w-80">
-                <Search className="pointer-events-none absolute right-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} placeholder="חיפוש קטגוריה, פרויקט או אפליקציה" className="h-12 pr-11 text-base" />
+                <Input value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} placeholder="חיפוש קטגוריה, פרויקט או אפליקציה" className="h-12 pr-3 text-base" />
               </div>
               <Button onClick={openNewCategory} className="gap-2" title="הוספת קטגוריה חדשה למערכת">
-                <Plus className="h-4 w-4" />
                 קטגוריה חדשה
               </Button>
             </div>
@@ -855,21 +834,20 @@ const AdminPanel = () => {
                             <div className="flex gap-1">
                               <Button
                                 type="button"
-                                size="icon"
                                 variant="ghost"
                                 onClick={() => void saveCategoryMetadata(cat)}
                                 disabled={!categoryMetadataDrafts[cat.id] || savingMetadataId === `category-${cat.id}`}
                                 title="שמירת שם הפרויקט וקישור לאפליקציה"
                                 aria-label={`שמירת פרטי ${cat.name}`}
-                                className="h-9 w-9 text-muted-foreground hover:text-primary"
+                                className="h-9 px-2 text-xs text-muted-foreground hover:text-primary"
                               >
-                                <Save className="h-4 w-4" />
+                                שמירה
                               </Button>
-                              <button onClick={() => openEditCategory(cat)} title="עריכת הקטגוריה, הפרויקט והאפליקציה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary">
-                                <Pencil className="h-4 w-4" />
+                              <button onClick={() => openEditCategory(cat)} title="עריכת הקטגוריה, הפרויקט והאפליקציה" aria-label="עריכת הקטגוריה, הפרויקט והאפליקציה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary">
+                                עריכה
                               </button>
-                              <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} title="מחיקת הקטגוריה" className="flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
+                              <button onClick={() => setDeleteCatTarget({ id: cat.id, name: cat.name })} title="מחיקת הקטגוריה" aria-label="מחיקת הקטגוריה" className="flex h-9 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-destructive">
+                                מחיקה
                               </button>
                             </div>
                           </td>
@@ -938,7 +916,7 @@ const AdminPanel = () => {
       </Dialog>
 
       <Dialog open={artworkDialogOpen} onOpenChange={setArtworkDialogOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-border bg-card text-foreground sm:max-w-lg">
+        <DialogContent className="overflow-y-auto border-border bg-card text-foreground sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingArtwork ? "עריכת יצירה" : "יצירה חדשה"}</DialogTitle>
           </DialogHeader>
@@ -996,8 +974,8 @@ const AdminPanel = () => {
                   {aForm.tags.map((tag) => (
                     <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-primary px-2.5 py-0.5 text-xs text-primary">
                       {tag}
-                      <button onClick={() => removeTag(tag)} className="hover:text-foreground">
-                        <X className="h-3 w-3" />
+                      <button onClick={() => removeTag(tag)} aria-label={`הסרת התגית ${tag}`} className="text-muted-foreground hover:text-foreground">
+                        הסרה
                       </button>
                     </span>
                   ))}

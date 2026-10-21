@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { ImageIcon, Upload, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 interface ImageDropZoneProps {
@@ -11,7 +10,7 @@ interface ImageDropZoneProps {
   folder?: string;
 }
 
-const ImageDropZone = ({ value, onChange, bucket = "artwork-images", folder = "covers" }: ImageDropZoneProps) => {
+const ImageDropZone = ({ value, onChange, bucket = "neo-gallery-images", folder = "covers" }: ImageDropZoneProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -71,7 +70,7 @@ const ImageDropZone = ({ value, onChange, bucket = "artwork-images", folder = "c
       >
         {uploading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <span className="text-xs text-muted-foreground">טוען...</span>
           </div>
         )}
 
@@ -81,21 +80,22 @@ const ImageDropZone = ({ value, onChange, bucket = "artwork-images", folder = "c
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onChange(""); }}
-              className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-muted-foreground backdrop-blur-sm hover:text-destructive"
+              aria-label="הסרת תמונה"
+              className="absolute right-2 top-2 flex h-7 items-center justify-center rounded-full bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-destructive"
             >
-              <X className="h-4 w-4" />
+              הסרה
             </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
-              className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-background/80 text-muted-foreground backdrop-blur-sm hover:text-primary"
+              aria-label="העלאת תמונה אחרת"
+              className="absolute bottom-2 right-2 flex h-7 items-center justify-center rounded-full bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-primary"
             >
-              <Upload className="h-3.5 w-3.5" />
+              העלאה
             </button>
           </>
         ) : (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
-            <ImageIcon className="h-8 w-8" />
             <p className="text-xs">גררי תמונה, הדביקי מהלוח, או לחצי לבחירה</p>
           </div>
         )}
