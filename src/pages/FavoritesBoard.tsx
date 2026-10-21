@@ -1,210 +1,69 @@
-import { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
+import ArtworkWall, { type WallArtwork } from "@/components/media/ArtworkWall";
+import ScreeningMode from "@/components/media/ScreeningMode";
+import { toast } from "sonner";
 
-interface FavoriteItem {
-  id: string;
-  artworkId: string;
-  title: string;
-  galleryName: string;
-  gallerySlug: string;
-  imageUrl: string;
-}
-
+/** The shared curated selection: Anat's picks across every gallery, as one wall. */
 const FavoritesBoard = () => {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
-  const { toast } = useToast();
-
-  const {
-    data: favorites = [],
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["favorites", user?.id],
+  const [screening, setScreening] = useState(false);
+  const { data: works = [], isLoading } = useQuery({
+    queryKey: ["favorites-board"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("neo_favorites" as any)
-        .select("id, artwork_id, artwork:neo_artworks(id, title, image_url, gallery:neo_galleries(name, slug))")
-        .eq("user_id", user!.id)
+        .from("neo_favorites")
+        .select("created_at, artwork:neo_artworks(id, title, topic, image_url, media_url, media_type, width, height, sort_order)")
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-
-      return ((data ?? []) as any[])
-        .map((item) => ({
-          id: item.id,
-          artworkId: item.artwork?.id ?? item.artwork_id,
-          title: item.artwork?.title ?? "",
-          galleryName: item.artwork?.gallery?.name ?? "",
-          gallerySlug: item.artwork?.gallery?.slug ?? "",
-          imageUrl: item.artwork?.image_url ?? "",
-        }))
-        .filter((item) => item.artworkId);
+      return ((data ?? []) as unknown as { artwork: WallArtwork | null }[]).map((r) => r.artwork).filter(Boolean) as WallArtwork[];
     },
-    enabled: !!user,
   });
 
-  const removeFavorite = useCallback(
-    async (id: string) => {
-      if (!user) return;
-
-      const { error } = await supabase
-        .from("neo_favorites" as any)
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
-
-      if (error) {
-        toast({ title: "שגיאה", description: error.message, variant: "destructive" });
-        return;
+  const share = async () => {
+    try {
+      if (navigator.share) await navigator.share({ title: "נבחרות, ART-AI גלריה", url: window.location.href });
+      else {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success("הקישור הועתק");
       }
-
-      toast({ title: "הוסר מהמועדפים" });
-      queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
-    },
-    [queryClient, toast, user],
-  );
-
-  const handleShareList = async () => {
-    if (navigator.share) {
-      await navigator.share({ title: "המועדפים שלי — ART-AI", url: window.location.href });
-      return;
+    } catch {
+      /* user cancelled */
     }
-
-    await navigator.clipboard.writeText(window.location.href);
-    toast({ title: "הקישור הועתק" });
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-        <div className="mb-8">
-          <Skeleton className="h-8 w-48" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/")}
-          className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
-        >
-          חזרה לגלריות
-        </Button>
-
-        <div className="flex flex-col items-center justify-center gap-5 py-24">
-          <p className="text-lg text-muted-foreground">התחברי כדי לשמור מועדפים</p>
-          <Button onClick={() => navigate("/login")} className="gap-2">
-            התחברי / הירשמי
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/")}
-        className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
-      >
-        חזרה לגלריות
-      </Button>
-
-      {isLoading && (
-        <>
-          <div className="mb-8">
-            <Skeleton className="h-8 w-48" />
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-lg bg-card">
-                <Skeleton className="aspect-square w-full" />
-                <div className="space-y-2 p-4">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {isError && (
-        <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <p className="text-lg text-muted-foreground">לא ניתן לטעון מועדפים</p>
-          <Button onClick={() => window.location.reload()}>נסי שוב</Button>
+    <div className="min-h-screen px-4 py-10 md:px-8 lg:px-12" dir="rtl">
+      <header className="mb-10 grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div>
+          <span className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">אוצרות</span>
+          <h1 className="mt-1 text-4xl font-extralight tracking-tight md:text-6xl">נבחרות</h1>
+          <p className="mt-3 max-w-xl text-muted-foreground">העבודות שסומנו "לנבחרות" מכל הגלריות, בקיר אחד.</p>
+          <p className="mt-2 font-mono text-[11px] text-muted-foreground">{works.length} עבודות</p>
         </div>
-      )}
-
-      {!isLoading && !isError && favorites.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-5 py-24">
-          <p className="text-lg text-muted-foreground">עדיין לא שמרת יצירות</p>
-          <Button onClick={() => navigate("/")} className="gap-2">
-            גלשי בגלריות
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={share} className="h-11 rounded-full border border-border px-5 text-sm hover:bg-secondary">שיתוף</button>
+          {works.length > 0 && (
+            <motion.button type="button" whileHover={{ scale: 1.03 }} onClick={() => setScreening(true)} className="h-11 rounded-full bg-foreground px-6 text-sm text-background shadow-deep">
+              הקרנה
+            </motion.button>
+          )}
         </div>
+      </header>
+
+      {isLoading ? (
+        <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+          {[280, 200, 340, 240].map((h, i) => <Skeleton key={i} className="mb-5 w-full" style={{ height: h }} />)}
+        </div>
+      ) : works.length === 0 ? (
+        <p className="py-20 text-center text-muted-foreground">עדיין אין נבחרות. בכל יצירה יש "לנבחרות" בפינה.</p>
+      ) : (
+        <ArtworkWall artworks={works} editing={false} actions={[]} onReorder={() => undefined} onUpload={() => undefined} onReplaceMedia={() => undefined} />
       )}
 
-      {!isLoading && !isError && favorites.length > 0 && (
-        <>
-          <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-foreground md:text-3xl">המועדפים שלי</h1>
-              <span className="rounded-full bg-secondary px-3 py-1 text-sm text-muted-foreground">
-                {favorites.length}
-              </span>
-            </div>
-            <Button variant="ghost" onClick={handleShareList} className="gap-2 text-muted-foreground hover:text-primary">
-              שתפי רשימה
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {favorites.map((fav) => (
-              <div
-                key={fav.id}
-                className="group relative overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/40 hover:shadow-[0_0_20px_hsl(var(--primary)/0.1)]"
-              >
-                <button
-                  onClick={() => removeFavorite(fav.id)}
-                  aria-label="הסרה מהמועדפים"
-                  className="absolute left-3 top-3 z-10 flex h-8 items-center justify-center rounded-full bg-background/70 px-2 text-xs text-destructive opacity-100 backdrop-blur-sm transition-opacity md:opacity-0 md:group-hover:opacity-100"
-                >
-                  הסרה
-                </button>
-
-                <button onClick={() => navigate(`/artwork/${fav.artworkId}`)} className="w-full text-right">
-                  <div className="aspect-square overflow-hidden">
-                    <img
-                      src={fav.imageUrl}
-                      alt={fav.title}
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-base font-semibold text-foreground">{fav.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{fav.galleryName}</p>
-                  </div>
-                </button>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      <AnimatePresence>{screening && <ScreeningMode artworks={works} title="נבחרות" onClose={() => setScreening(false)} />}</AnimatePresence>
     </div>
   );
 };

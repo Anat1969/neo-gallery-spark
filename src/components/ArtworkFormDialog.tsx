@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import ImageDropZone from "@/components/ImageDropZone";
+import { ACCEPT_ALL, MEDIA_LABEL, uploadMedia, type MediaType, type UploadedMedia } from "@/lib/media";
 
 interface ArtworkFormData {
   id?: string;
@@ -68,6 +69,22 @@ const ArtworkFormDialog = ({
   const [selectedGalleryId, setSelectedGalleryId] = useState(galleryId);
   const [tagInput, setTagInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [media, setMedia] = useState<Omit<UploadedMedia, "title"> | null>(null);
+  const [mediaBusy, setMediaBusy] = useState(false);
+
+  const pickMedia = async (file: File) => {
+    setMediaBusy(true);
+    try {
+      const { title, ...m } = await uploadMedia(file);
+      setMedia(m);
+      if (m.image_url) set("image_url", m.image_url);
+      if (!form.title.trim()) set("title", title);
+    } catch (e: any) {
+      toast({ title: "שגיאה בהעלאה", description: e.message, variant: "destructive" });
+    } finally {
+      setMediaBusy(false);
+    }
+  };
 
   const isEditing = !!artwork?.id;
 
@@ -107,6 +124,7 @@ const ArtworkFormDialog = ({
     }
 
     setTagInput("");
+    setMedia(null);
   }, [open, artwork, galleryId]);
 
   const set = (key: keyof typeof form, value: any) =>
@@ -148,6 +166,8 @@ const ArtworkFormDialog = ({
       concept: form.concept,
       year: form.year,
       inspiration_url: form.inspiration_url,
+      ...(media ?? {}),
+      ...(media ? { image_url: media.image_url || form.image_url } : {}),
     };
 
     try {
@@ -240,7 +260,19 @@ const ArtworkFormDialog = ({
           </div>
 
           <div>
-            <Label className="text-foreground">תמונה</Label>
+            <Label className="text-foreground">קובץ היצירה</Label>
+            <label
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) pickMedia(f); }}
+              className="mt-1 flex min-h-[72px] cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-muted-foreground/30 p-3 text-center text-sm text-muted-foreground hover:border-foreground/50"
+            >
+              {mediaBusy ? "מעלה..." : media ? `הועלה: ${MEDIA_LABEL[media.media_type as MediaType]}` : "גררי או בחרי: תמונה, וידאו, PDF, תלת־ממד, שמע"}
+              <input type="file" accept={ACCEPT_ALL} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) pickMedia(f); e.target.value = ""; }} />
+            </label>
+          </div>
+
+          <div>
+            <Label className="text-foreground">תמונת כיסוי</Label>
             <div className="mt-1">
               <ImageDropZone
                 value={form.image_url}

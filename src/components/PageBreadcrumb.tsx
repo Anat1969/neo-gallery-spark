@@ -11,19 +11,19 @@ interface PageBreadcrumbProps {
   sticky?: boolean;
 }
 
-const PageBreadcrumb = ({ crumbs, sticky = true }: PageBreadcrumbProps) => {
+const PageBreadcrumb = ({ crumbs, sticky = false }: PageBreadcrumbProps) => {
   const navigate = useNavigate();
 
   const inner = (
     <nav
       aria-label="מיקום בניווט"
-      className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground"
+      className="mb-6 flex flex-wrap items-center gap-1 font-mono text-xs text-muted-foreground"
       dir="rtl"
     >
       <button
         onClick={() => navigate("/")}
         title="דף הבית"
-        className="flex items-center transition-colors hover:text-primary"
+        className="flex min-h-0 items-center transition-colors hover:text-foreground"
       >
         בית
       </button>
@@ -36,7 +36,7 @@ const PageBreadcrumb = ({ crumbs, sticky = true }: PageBreadcrumbProps) => {
             {crumb.to && !isLast ? (
               <button
                 onClick={() => navigate(crumb.to!)}
-                className="transition-colors hover:text-primary"
+                className="min-h-0 transition-colors hover:text-foreground"
               >
                 {crumb.label}
               </button>
@@ -57,7 +57,7 @@ const PageBreadcrumb = ({ crumbs, sticky = true }: PageBreadcrumbProps) => {
   if (!sticky) return inner;
 
   return (
-    <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-sm md:-mx-8 md:px-8 lg:-mx-12 lg:px-12">
+    <div className="sticky top-16 z-30 -mx-4 mb-4 border-b border-border bg-background/85 px-4 py-3 backdrop-blur-sm md:-mx-8 md:px-8 lg:-mx-12 lg:px-12">
       {inner}
     </div>
   );

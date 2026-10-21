@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
+import { thumbUrl } from "@/lib/media";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,7 +109,6 @@ const AdminPanel = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { user } = useAuth();
   const { data: categoriesData = [], isLoading: categoriesLoading } = useCategories();
   const categoryNames = categoriesData.length > 0 ? categoriesData.map((c) => c.name) : CATEGORIES_FALLBACK;
 
@@ -379,7 +378,6 @@ const AdminPanel = () => {
           project_name: gForm.projectName.trim(),
           app_name: gForm.appName.trim(),
           sort_order: (maxRow?.sort_order ?? -1) + 1,
-          created_by: user?.id ?? null,
         });
 
         if (error) throw error;
@@ -587,14 +585,15 @@ const AdminPanel = () => {
   const isEmpty = !isLoading && galleries.length === 0;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 text-base text-foreground md:px-8 lg:px-12">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => navigate("/")} className="gap-2 text-muted-foreground hover:text-foreground">
-            חזרה
-          </Button>
-          <h1 className="text-3xl font-bold text-foreground md:text-4xl">ניהול</h1>
+    <div className="min-h-screen px-4 py-8 text-base text-foreground md:px-8 lg:px-12">
+      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">ניהול</span>
+          <h1 className="mt-1 text-4xl font-extralight tracking-tight md:text-6xl">ניהול התוכן</h1>
         </div>
+        <Button variant="outline" onClick={() => navigate("/trash")} className="rounded-full">
+          סל מחזור
+        </Button>
       </div>
 
       {isLoading && <p className="py-12 text-center text-muted-foreground">טוען נתונים...</p>}
@@ -743,7 +742,7 @@ const AdminPanel = () => {
                       <tr key={a.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-3">
                           {a.imageUrl ? (
-                            <img src={a.imageUrl} alt={a.title} className="h-10 w-10 rounded object-cover" />
+                            <img src={thumbUrl(a.imageUrl, 80)} alt={a.title} loading="lazy" className="h-10 w-10 rounded object-cover" />
                           ) : (
                             <div className="h-10 w-10 rounded bg-secondary" />
                           )}

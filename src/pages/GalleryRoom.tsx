@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useCallback, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,6 +40,12 @@ import { buildCrumbs } from "@/lib/breadcrumbs";
 import InlineEdit from "@/components/InlineEdit";
 import ProjectMetaBar from "@/components/ProjectMetaBar";
 import ImageDropZone from "@/components/ImageDropZone";
+import ArtworkWall, { type WallArtwork } from "@/components/media/ArtworkWall";
+import ScreeningMode from "@/components/media/ScreeningMode";
+import { useArtworkUploader } from "@/hooks/useArtworkUploader";
+import { useDockActions } from "@/contexts/DockContext";
+import { MEDIA_LABEL, thumbUrl, uploadImage, type MediaType } from "@/lib/media";
+import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 
 const slugify = (text: string) =>
   text.trim().toLowerCase()
@@ -52,48 +58,11 @@ const GalleryRoom = () => {
   const queryClient = useQueryClient();
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
-  const { user } = useAuth();
-
-  // Favorites
-  const { data: userFavorites = [] } = useQuery({
-    queryKey: ["favorites", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("neo_favorites" as any)
-        .select("id, artwork_id")
-        .eq("user_id", user!.id);
-      if (error) throw error;
-      return (data ?? []) as any[];
-    },
-    enabled: !!user,
-  });
-
-  const getFavoriteId = (artworkId: string) =>
-    userFavorites.find((f: any) => f.artwork_id === artworkId)?.id;
-
-  const handleToggleFavorite = async (e: React.MouseEvent, artworkId: string) => {
-    e.stopPropagation();
-    if (!user) {
-      toast({ title: "צריך להתחבר כדי לשמור למועדפים", variant: "destructive" });
-      navigate("/login");
-      return;
-    }
-    const existingId = getFavoriteId(artworkId);
-    if (existingId) {
-      await supabase.from("neo_favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
-      toast({ title: "הוסר מהמועדפים" });
-    } else {
-      await supabase.from("neo_favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
-      toast({ title: "נשמר במועדפים" });
-    }
-    queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
-  };
-
   // Artwork form state
   const [formOpen, setFormOpen] = useState(false);
   const [editingArtwork, setEditingArtwork] = useState<any>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [screening, setScreening] = useState(false);
 
   // Room form state
   const [roomFormOpen, setRoomFormOpen] = useState(false);
@@ -107,18 +76,9 @@ const GalleryRoom = () => {
   const [moveArtwork, setMoveArtwork] = useState<any>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<string>("");
 
-  // Fetch gallery by slug
   const { data: gallery, isLoading: galleryLoading } = useQuery({
-    queryKey: ["gallery", slug],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("neo_galleries")
-        .select("*")
-        .eq("slug", slug!)
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    queryKey: galleryKey(slug),
+    queryFn: () => fetchGallery(slug!),
     enabled: !!slug,
   });
 
@@ -156,29 +116,9 @@ const GalleryRoom = () => {
     enabled: !!gallery?.id,
   });
 
-  // Fetch artworks — filter by room_id IS NULL if column exists, else return all
   const { data: artworks = [], isLoading: artworksLoading } = useQuery({
-    queryKey: ["artworks", gallery?.id],
-    queryFn: async () => {
-      // Try with room_id filter first (post-migration)
-      const { data, error } = await supabase
-        .from("neo_artworks")
-        .select("*")
-        .eq("gallery_id", gallery!.id)
-        .is("room_id" as any, null)
-        .order("sort_order", { ascending: true });
-
-      if (error) {
-        // Migration not applied yet — fall back to all artworks
-        const { data: fallback } = await supabase
-          .from("neo_artworks")
-          .select("*")
-          .eq("gallery_id", gallery!.id)
-          .order("sort_order", { ascending: true });
-        return fallback ?? [];
-      }
-      return data ?? [];
-    },
+    queryKey: rootArtworksKey(gallery?.id),
+    queryFn: () => fetchRootArtworks(gallery!.id),
     enabled: !!gallery?.id,
   });
 
@@ -252,26 +192,26 @@ const GalleryRoom = () => {
     setDeleteTarget(null);
   };
 
-  const handleDragStart = (idx: number) => setDragIdx(idx);
-
-  const handleDrop = async (dropIdx: number) => {
-    if (dragIdx === null || dragIdx === dropIdx) { setDragIdx(null); return; }
-    const reordered = [...artworks];
-    const [moved] = reordered.splice(dragIdx, 1);
-    reordered.splice(dropIdx, 0, moved);
+  const handleReorder = async (reordered: WallArtwork[]) => {
     queryClient.setQueryData(["artworks", gallery?.id], reordered);
-    setDragIdx(null);
-    const updates = reordered.map((a: any, i) => ({ id: a.id, sort_order: i }));
-    const results = await Promise.all(updates.map((u) => supabase.from("neo_artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
+    const results = await Promise.all(reordered.map((a, i) => supabase.from("neo_artworks").update({ sort_order: i }).eq("id", a.id)));
     const firstError = results.find((r) => r.error)?.error;
     if (firstError) toast({ title: "שגיאה", description: firstError.message, variant: "destructive" });
     else toast({ title: "סדר היצירות עודכן" });
     refresh();
   };
 
+  const nextOrder = (artworks as any[]).length > 0 ? Math.max(...(artworks as any[]).map((a) => a.sort_order)) + 1 : 0;
+  const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: null, nextOrder, onDone: refresh });
+
+  const mediaCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    (artworks as any[]).forEach((a) => m.set(a.media_type || "image", (m.get(a.media_type || "image") ?? 0) + 1));
+    return [...m.entries()];
+  }, [artworks]);
+
   // ── Move artwork to room ──────────────────────────────────
-  const openMoveDialog = (e: React.MouseEvent, artwork: any) => {
-    e.stopPropagation();
+  const openMoveDialog = (artwork: any) => {
     setMoveArtwork(artwork);
     setSelectedRoomId("");
   };
@@ -314,14 +254,10 @@ const GalleryRoom = () => {
     }
     setRoomCoverUploadingId(roomId);
     try {
-      const ext = file.name.split(".").pop() ?? "png";
-      const path = `room-covers/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
-      if (error) throw error;
-      const { data } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
+      const url = await uploadImage(file, "room-covers");
       const { error: updateError } = await supabase
         .from("neo_rooms" as any)
-        .update({ cover_image: data.publicUrl })
+        .update({ cover_image: url })
         .eq("id", roomId);
       if (updateError) throw updateError;
       refreshRooms();
@@ -378,44 +314,63 @@ const GalleryRoom = () => {
     setDeleteRoomTarget(null);
   };
 
+  const pickFiles = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = "*/*";
+    input.onchange = () => input.files?.length && uploader.upload(Array.from(input.files));
+    input.click();
+  };
+
+  useDockActions(
+    gallery
+      ? [
+          { id: "upload", label: "העלאת קבצים", onClick: pickFiles, primary: true },
+          { id: "empty", label: "יצירה ריקה", onClick: handleAddInline },
+          { id: "room", label: "חדר חדש", onClick: openNewRoom },
+        ]
+      : [],
+    [gallery?.id, artworks.length, rooms.length],
+  );
+
+  const tileActions = [
+    { label: "עריכת פרטים", onClick: (a: WallArtwork) => handleEdit(a) },
+    ...((rooms as any[]).length > 0 ? [{ label: "העברה לחדר", onClick: (a: WallArtwork) => openMoveDialog(a) }] : []),
+    { label: "מחיקה", onClick: (a: WallArtwork) => setDeleteTarget({ id: a.id, title: a.title }), danger: true },
+  ];
+
   return (
-    <div className="min-h-screen bg-background px-4 py-8 md:px-8 lg:px-12">
+    <div className="min-h-screen px-4 py-8 md:px-8 lg:px-12">
       <PageBreadcrumb crumbs={buildCrumbs({
         category: gallery?.category,
         gallery: { name: gallery?.name ?? "..." },
       })} />
 
-      {/* Loading */}
       {isLoading && (
         <>
           <div className="mb-8 space-y-3">
-            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-12 w-72" />
             <Skeleton className="h-4 w-96" />
           </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="overflow-hidden rounded-lg bg-card">
-                <Skeleton className="aspect-square w-full" />
-                <div className="p-4 space-y-2">
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-3 w-1/2" />
-                </div>
-              </div>
+          <div className="columns-1 gap-5 sm:columns-2 lg:columns-3">
+            {[260, 340, 200, 300, 380, 240].map((h, i) => (
+              <Skeleton key={i} className="mb-5 w-full rounded-md" style={{ height: h }} />
             ))}
           </div>
         </>
       )}
 
-      {/* Header */}
       {!isLoading && gallery && (
-        <header className="mb-8">
-          <div className="flex flex-wrap items-center gap-3 mb-2">
+        <header className="mb-10 grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div className="min-w-0">
+            <span className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">{gallery.category}</span>
             <InlineEdit
               value={gallery.name}
               enabled={isEditMode}
               as="h1"
-              className="text-3xl font-bold text-foreground md:text-4xl"
-              inputClassName="text-3xl font-bold md:text-4xl"
+              className="mt-1 text-4xl font-extralight tracking-tight text-foreground md:text-6xl"
+              inputClassName="text-4xl font-extralight md:text-6xl"
               onSave={async (newName) => {
                 const { error } = await supabase.from("neo_galleries").update({ name: newName }).eq("id", gallery.id);
                 if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
@@ -423,68 +378,70 @@ const GalleryRoom = () => {
                 toast({ title: "שם הגלריה עודכן" });
               }}
             />
-            <span className="rounded-full bg-primary px-3 py-1 text-xs font-semibold text-primary-foreground">
-              {gallery.category}
-            </span>
-          </div>
-          <p className="text-muted-foreground max-w-2xl mb-1">{gallery.description}</p>
-
-          <ProjectMetaBar
-            table="galleries"
-            rowId={gallery.id}
-            label="פרויקט הגלריה:"
-            projectName={(gallery as any).project_name}
-            appUrl={(gallery as any).app_name}
-            editable={isEditMode}
-            onSaved={() => queryClient.invalidateQueries({ queryKey: ["gallery", slug] })}
-          />
-
-          {categoryRow && (
+            {gallery.description && <p className="mt-3 max-w-2xl text-muted-foreground">{gallery.description}</p>}
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-muted-foreground">
+              <span>{(artworks as any[]).length} עבודות</span>
+              {mediaCounts.filter(([t]) => t !== "image").map(([t, c]) => (
+                <span key={t}>{c} {MEDIA_LABEL[t as MediaType]}</span>
+              ))}
+              {(rooms as any[]).length > 0 && <span>{(rooms as any[]).length} חדרים</span>}
+            </div>
             <ProjectMetaBar
-              table="categories"
-              rowId={categoryRow.id}
-              label={`פרויקט הקטגוריה ${categoryRow.name}:`}
-              projectName={categoryRow.project_name}
-              appUrl={categoryRow.app_name}
+              table="galleries"
+              rowId={gallery.id}
+              label="פרויקט הגלריה:"
+              projectName={(gallery as any).project_name}
+              appUrl={(gallery as any).app_name}
               editable={isEditMode}
-              onSaved={() =>
-                queryClient.invalidateQueries({ queryKey: ["category-meta", gallery.category] })
-              }
+              onSaved={() => queryClient.invalidateQueries({ queryKey: ["gallery", slug] })}
             />
+            {categoryRow && (
+              <ProjectMetaBar
+                table="categories"
+                rowId={categoryRow.id}
+                label={`פרויקט הקטגוריה ${categoryRow.name}:`}
+                projectName={categoryRow.project_name}
+                appUrl={categoryRow.app_name}
+                editable={isEditMode}
+                onSaved={() => queryClient.invalidateQueries({ queryKey: ["category-meta", gallery.category] })}
+              />
+            )}
+          </div>
+          {(artworks as any[]).length > 0 && (
+            <motion.button
+              type="button"
+              onClick={() => setScreening(true)}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              className="group relative h-14 overflow-hidden rounded-full border border-foreground/30 bg-foreground px-8 text-base font-light text-background shadow-deep"
+            >
+              <span className="relative z-[1]">הקרנה</span>
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-l from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </motion.button>
           )}
         </header>
       )}
 
-      {/* ── Rooms section ────────────────────────────────── */}
-      {!isLoading && gallery && (
-        <section className="mb-10" dir="rtl">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              חדרים
-            </h2>
-            {isEditMode && (
-              <Button size="sm" onClick={openNewRoom} className="gap-2">
-                חדר חדש
-              </Button>
-            )}
-          </div>
-
-          {(rooms as any[]).length === 0 && !isEditMode && (
-            <p className="text-sm text-muted-foreground italic">עברי למצב עריכה כדי ליצור חדרים</p>
-          )}
-
-          {((rooms as any[]).length > 0 || isEditMode) && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {displayRooms.map((room: any) => (
-                <div
+      {/* Rooms */}
+      {!isLoading && gallery && ((rooms as any[]).length > 0 || isEditMode) && (
+        <section className="mb-12">
+          <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-muted-foreground">חדרים</h2>
+          {(rooms as any[]).length === 0 ? (
+            <p className="text-sm text-muted-foreground">אין עדיין חדרים. "חדר חדש" נמצא בפס העריכה.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+              {displayRooms.map((room: any, i: number) => (
+                <motion.div
                   key={room.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.05 }}
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
-                  className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
+                  className="group relative cursor-pointer overflow-hidden rounded-md border border-border/60 bg-card shadow-deep"
                 >
                   <div
-                    className={`relative aspect-video overflow-hidden bg-secondary ${isEditMode ? "outline-dashed outline-1 outline-muted-foreground/20" : ""}`}
-                    tabIndex={isEditMode ? 0 : undefined}
-                    title={isEditMode ? "גררי, הדביקי או לחצי להעלאת תמונת חדר" : undefined}
+                    className="relative aspect-[4/3] overflow-hidden bg-secondary"
                     onDragOver={(e) => { if (isEditMode) { e.preventDefault(); e.stopPropagation(); } }}
                     onDrop={(e) => {
                       if (!isEditMode) return;
@@ -492,236 +449,58 @@ const GalleryRoom = () => {
                       const file = e.dataTransfer.files?.[0];
                       if (file) uploadRoomCover(room.id, file);
                     }}
-                    onPaste={(e) => {
-                      if (!isEditMode) return;
-                      const file = Array.from(e.clipboardData.items).find(i => i.type.startsWith("image/"))?.getAsFile();
-                      if (!file) return;
-                      e.preventDefault(); e.stopPropagation();
-                      uploadRoomCover(room.id, file);
-                    }}
-                    onClick={(e) => {
-                      if (!isEditMode) return;
-                      e.stopPropagation();
-                      const input = document.createElement("input");
-                      input.type = "file";
-                      input.accept = "image/*";
-                      input.onchange = () => {
-                        const file = input.files?.[0];
-                        if (file) uploadRoomCover(room.id, file);
-                      };
-                      input.click();
-                    }}
                   >
                     {roomCoverUploadingId === room.id && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70">
-                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                      </div>
+                      <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 font-mono text-xs">מעלה...</div>
                     )}
                     {room.cover_image ? (
-                      <img src={room.cover_image} alt={room.name} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+                      <img src={thumbUrl(room.cover_image, 640)} alt={room.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                     ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-1">
-                        <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
-                        {isEditMode && <p className="text-xs text-muted-foreground/60">גררי, הדביקי או לחצי להוספת תמונה</p>}
-                      </div>
+                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">{isEditMode ? "גררי לכאן תמונת חדר" : "אין תמונה"}</div>
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                    <span className="absolute bottom-3 right-3 text-lg font-light text-white">{room.name}</span>
                   </div>
-                  <div className="flex flex-wrap items-center justify-between gap-1 p-3">
-                    <span className="min-w-0 truncate text-sm font-semibold text-foreground">{room.name}</span>
-                    {isEditMode && (
-                      <div className="flex shrink-0 gap-1">
-                        <span
-                          role="button"
-                          onClick={(e) => openEditRoom(e, room)}
-                          aria-label="עריכת חדר"
-                          className="flex h-7 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary"
-                        >
-                          עריכה
-                        </span>
-                        <span
-                          role="button"
-                          onClick={(e) => { e.stopPropagation(); setDeleteRoomTarget(room); }}
-                          aria-label="מחיקת חדר"
-                          className="flex h-7 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-destructive"
-                        >
-                          מחיקה
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ── Artworks (gallery root — no room) ───────────── */}
-      {!isLoading && gallery && (
-        <section dir="rtl">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">
-              {(rooms as any[]).length > 0 ? "יצירות ללא חדר" : "עבודות"}
-              <span className="mr-2 text-sm font-normal text-muted-foreground">{(artworks as any[]).length}</span>
-            </h2>
-          </div>
-
-          {(artworks as any[]).length === 0 && !isEditMode && (
-            <div className="flex flex-col items-center justify-center gap-4 py-16">
-              <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
-            </div>
-          )}
-
-          {((artworks as any[]).length > 0 || isEditMode) && (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {displayArtworks.map((artwork: any, idx: number) => (
-                <div
-                  key={artwork.id}
-                  draggable={isEditMode}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handleDrop(idx)}
-                  className={`group relative overflow-hidden rounded-lg border bg-card text-right transition-all cursor-pointer ${
-                    dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
-                  }`}
-                  onClick={() => navigate(`/artwork/${artwork.id}`)}
-                >
                   {isEditMode && (
-                    <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap gap-1">
-                      <span aria-label="גרירה לשינוי סדר" className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm cursor-grab" onMouseDown={(e) => e.stopPropagation()}>
-                        גרירה
-                      </span>
-                      {(rooms as any[]).length > 0 && (
-                        <span
-                          role="button"
-                          title="העברה לחדר"
-                          onClick={(e) => openMoveDialog(e, artwork)}
-                          aria-label="העברה לחדר"
-                          className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
-                        >
-                          העברה לחדר
-                        </span>
-                      )}
-                      <span
-                        role="button"
-                        onClick={(e) => { e.stopPropagation(); handleEdit(artwork); }}
-                        aria-label="עריכת יצירה"
-                        className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
-                      >
-                        עריכה
-                      </span>
-                      <span
-                        role="button"
-                        onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: artwork.id, title: artwork.title }); }}
-                        aria-label="מחיקת יצירה"
-                        className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
-                      >
-                        מחיקה
-                      </span>
+                    <div className="absolute left-2 top-2 flex gap-1">
+                      <button type="button" onClick={(e) => openEditRoom(e, room)} className="h-7 min-h-0 rounded-sm bg-background/85 px-2 font-mono text-[10px] backdrop-blur">עריכה</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setDeleteRoomTarget(room); }} className="h-7 min-h-0 rounded-sm bg-background/85 px-2 font-mono text-[10px] text-destructive backdrop-blur">מחיקה</button>
                     </div>
                   )}
-                  <div
-                    className="relative aspect-square overflow-hidden bg-secondary"
-                    onDragOver={(e) => { if (isEditMode) e.preventDefault(); }}
-                    onDrop={async (e) => {
-                      if (!isEditMode) return;
-                      e.preventDefault(); e.stopPropagation();
-                      const file = e.dataTransfer.files?.[0];
-                      if (!file?.type.startsWith("image/")) return;
-                      const ext = file.name.split(".").pop() ?? "png";
-                      const path = `artworks/${crypto.randomUUID()}.${ext}`;
-                      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
-                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                      const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
-                      await supabase.from("neo_artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
-                      queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
-                      toast({ title: "התמונה עודכנה" });
-                    }}
-                    onPaste={async (e) => {
-                      if (!isEditMode) return;
-                      const file = Array.from(e.clipboardData.items).find(i => i.type.startsWith("image/"))?.getAsFile();
-                      if (!file) return;
-                      e.preventDefault();
-                      const path = `artworks/${crypto.randomUUID()}.png`;
-                      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
-                      if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                      const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
-                      await supabase.from("neo_artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
-                      queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
-                      toast({ title: "התמונה עודכנה" });
-                    }}
-                    tabIndex={isEditMode ? 0 : undefined}
-                  >
-                    {artwork.image_url ? (
-                      <img src={artwork.image_url} alt={artwork.title} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
-                    ) : (
-                      <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
-                        {isEditMode && <p className="text-xs text-muted-foreground/60">גררי או הדביקי תמונה</p>}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-start justify-between p-4">
-                    <div className="min-w-0 flex-1">
-                      <InlineEdit
-                        value={artwork.title}
-                        enabled={isEditMode}
-                        as="h3"
-                        className="text-base font-semibold text-foreground"
-                        inputClassName="text-base font-semibold w-full"
-                        onSave={async (newTitle) => {
-                          const { error } = await supabase.from("neo_artworks").update({ title: newTitle }).eq("id", artwork.id);
-                          if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                          refresh();
-                          toast({ title: "שם היצירה עודכן" });
-                        }}
-                      />
-                      <p className="mt-1 text-sm text-muted-foreground truncate">{artwork.topic}</p>
-                    </div>
-                    <button
-                      onClick={(e) => handleToggleFavorite(e, artwork.id)}
-                      aria-label={getFavoriteId(artwork.id) ? "הסרה מהמועדפים" : "שמירה למועדפים"}
-                      aria-pressed={!!getFavoriteId(artwork.id)}
-                      className={`mt-0.5 flex h-8 shrink-0 items-center justify-center rounded-full px-2 text-xs transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
-                    >
-                      {getFavoriteId(artwork.id) ? "שמור" : "שמירה"}
-                    </button>
-                  </div>
-                </div>
+                </motion.div>
               ))}
-
-              {isEditMode && (
-                <div
-                  onClick={handleAddInline}
-                  onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("border-primary", "text-primary"); }}
-                  onDragLeave={(e) => { e.currentTarget.classList.remove("border-primary", "text-primary"); }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove("border-primary", "text-primary");
-                    if (!gallery) return;
-                    const file = e.dataTransfer.files?.[0];
-                    if (!file?.type.startsWith("image/")) { handleAddInline(); return; }
-                    const nextOrder = (artworks as any[]).length > 0 ? Math.max(...(artworks as any[]).map(a => a.sort_order)) + 1 : 0;
-                    const ext = file.name.split(".").pop() ?? "png";
-                    const path = `artworks/${crypto.randomUUID()}.${ext}`;
-                    const { error: uploadErr } = await supabase.storage.from("neo-gallery-images").upload(path, file);
-                    if (uploadErr) { toast({ title: "שגיאה", description: uploadErr.message, variant: "destructive" }); return; }
-                    const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
-                    const { error } = await supabase.from("neo_artworks").insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder, image_url: urlData.publicUrl }).select().single();
-                    if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                    refresh();
-                    toast({ title: "יצירה נוספה עם תמונה" });
-                  }}
-                  className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
-                  style={{ minHeight: "280px" }}
-                >
-                  <span className="text-sm font-medium">הוסיפי יצירה או גררי תמונה</span>
-                </div>
-              )}
             </div>
           )}
         </section>
       )}
+
+      {/* Works: the salon wall */}
+      {!isLoading && gallery && (
+        <section>
+          {(rooms as any[]).length > 0 && (
+            <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-muted-foreground">יצירות ללא חדר</h2>
+          )}
+          {(artworks as any[]).length === 0 && !isEditMode ? (
+            <p className="py-16 text-center text-lg text-muted-foreground">הגלריה ריקה. במצב עריכה אפשר לגרור לכאן קבצים.</p>
+          ) : (
+            <ArtworkWall
+              artworks={displayArtworks as WallArtwork[]}
+              editing={isEditMode}
+              actions={tileActions}
+              onReorder={handleReorder}
+              onUpload={uploader.upload}
+              onReplaceMedia={(a, f) => uploader.replace(a.id, f)}
+              uploading={uploader.progress}
+            />
+          )}
+        </section>
+      )}
+
+      <AnimatePresence>
+        {screening && (
+          <ScreeningMode artworks={displayArtworks as WallArtwork[]} title={gallery?.name ?? ""} onClose={() => setScreening(false)} />
+        )}
+      </AnimatePresence>
 
       {/* Artwork Form Dialog */}
       {gallery && (

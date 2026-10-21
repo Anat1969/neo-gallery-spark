@@ -1,5 +1,5 @@
 // Pages from the network (fresh content), images and static assets from the cache.
-const CACHE = 'neo-gallery-v1';
+const CACHE = 'neo-gallery-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
