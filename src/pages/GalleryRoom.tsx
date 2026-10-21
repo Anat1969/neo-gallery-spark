@@ -408,16 +408,9 @@ const GalleryRoom = () => {
             )}
           </div>
           {(artworks as any[]).length > 0 && (
-            <motion.button
-              type="button"
-              onClick={() => setScreening(true)}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.98 }}
-              className="group relative h-14 overflow-hidden rounded-full border border-foreground/30 bg-foreground px-8 text-base font-light text-background shadow-deep"
-            >
-              <span className="relative z-[1]">הקרנה</span>
-              <span className="absolute inset-0 -translate-x-full bg-gradient-to-l from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-            </motion.button>
+            <button type="button" onClick={() => setScreening(true)} className="arch-btn arch-btn-ink arch-btn-lg shadow-deep">
+              הקרנה
+            </button>
           )}
         </header>
       )}

@@ -24,7 +24,7 @@
     --border: 30 3% 22%;
     --input: 30 3% 24%;
     --ring: 40 12% 70%;
-    --radius: 0.5rem;
+    --radius: 2px;
 
     /* Atmosphere */
     --bg-top: 30 4% 7%;
@@ -185,4 +185,102 @@
 
 ::view-transition-old(root), ::view-transition-new(root) {
   animation-duration: 0.45s;
+}
+
+@layer components {
+/* ── Architectural button language ─────────────────────────────
+   Square, hairline, set in mono with open tracking. Ink wipes in from the
+   reading side on hover; four crop marks frame the button like a sheet. */
+.arch-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 0;
+  height: 2.25rem;
+  padding: 0 0.9rem;
+  border: 1px solid hsl(var(--foreground) / 0.28);
+  border-radius: 0;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: hsl(var(--foreground) / 0.82);
+  background: linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) no-repeat right / 0% 100%;
+  transition: background-size 0.45s cubic-bezier(0.7, 0, 0.2, 1), color 0.3s, border-color 0.3s;
+  white-space: nowrap;
+}
+.arch-btn:hover,
+.arch-btn:focus-visible {
+  background-size: 100% 100%;
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
+  outline: none;
+}
+.arch-btn::before,
+.arch-btn::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s, inset 0.3s;
+  background:
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) top left / 6px 1px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) top left / 1px 6px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) bottom right / 6px 1px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) bottom right / 1px 6px;
+  background-repeat: no-repeat;
+}
+.arch-btn::after {
+  background:
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) top right / 6px 1px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) top right / 1px 6px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) bottom left / 6px 1px,
+    linear-gradient(hsl(var(--foreground)), hsl(var(--foreground))) bottom left / 1px 6px;
+  background-repeat: no-repeat;
+}
+.arch-btn:hover::before,
+.arch-btn:hover::after,
+.arch-btn:focus-visible::before,
+.arch-btn:focus-visible::after {
+  opacity: 0.6;
+  inset: -5px;
+}
+/* Solid ink: the one main action on a page */
+.arch-btn-ink {
+  background-color: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
+  background-image: linear-gradient(hsl(var(--background)), hsl(var(--background)));
+}
+.arch-btn-ink:hover,
+.arch-btn-ink:focus-visible {
+  color: hsl(var(--foreground));
+}
+.arch-btn-lg {
+  height: 3.25rem;
+  padding: 0 2rem;
+  font-size: 12px;
+  letter-spacing: 0.22em;
+}
+.arch-btn-quiet {
+  border-color: transparent;
+}
+.arch-btn[aria-pressed="true"] {
+  background-size: 100% 100%;
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
+}
+.arch-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+/* Sheet number before a label, as on a drawing index */
+.arch-num {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  opacity: 0.55;
+}
 }

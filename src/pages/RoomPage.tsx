@@ -230,14 +230,9 @@ const RoomPage = () => {
             />
           </div>
           {artworks.length > 0 && (
-            <motion.button
-              type="button"
-              onClick={() => setScreening(true)}
-              whileHover={{ scale: 1.03 }}
-              className="h-14 rounded-full bg-foreground px-8 text-base font-light text-background shadow-deep"
-            >
+            <button type="button" onClick={() => setScreening(true)} className="arch-btn arch-btn-ink arch-btn-lg shadow-deep">
               הקרנה
-            </motion.button>
+            </button>
           )}
         </header>
       )}

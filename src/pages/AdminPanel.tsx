@@ -591,7 +591,7 @@ const AdminPanel = () => {
           <span className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground">ניהול</span>
           <h1 className="mt-1 text-4xl font-extralight tracking-tight md:text-6xl">ניהול התוכן</h1>
         </div>
-        <Button variant="outline" onClick={() => navigate("/trash")} className="rounded-full">
+        <Button variant="outline" onClick={() => navigate("/trash")} className="rounded-none">
           סל מחזור
         </Button>
       </div>
@@ -971,7 +971,7 @@ const AdminPanel = () => {
               {aForm.tags.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {aForm.tags.map((tag) => (
-                    <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-primary px-2.5 py-0.5 text-xs text-primary">
+                    <span key={tag} className="inline-flex items-center gap-1 rounded-none border border-primary px-2.5 py-0.5 text-xs text-primary">
                       {tag}
                       <button onClick={() => removeTag(tag)} aria-label={`הסרת התגית ${tag}`} className="text-muted-foreground hover:text-foreground">
                         הסרה

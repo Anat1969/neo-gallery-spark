@@ -44,9 +44,9 @@ const FavoritesBoard = () => {
           <p className="mt-2 font-mono text-[11px] text-muted-foreground">{works.length} עבודות</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={share} className="h-11 rounded-full border border-border px-5 text-sm hover:bg-secondary">שיתוף</button>
+          <button type="button" onClick={share} className="arch-btn arch-btn-lg">שיתוף</button>
           {works.length > 0 && (
-            <motion.button type="button" whileHover={{ scale: 1.03 }} onClick={() => setScreening(true)} className="h-11 rounded-full bg-foreground px-6 text-sm text-background shadow-deep">
+            <motion.button type="button" onClick={() => setScreening(true)} className="arch-btn arch-btn-ink arch-btn-lg shadow-deep">
               הקרנה
             </motion.button>
           )}

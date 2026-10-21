@@ -152,9 +152,9 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
           </motion.div>
 
           <div className="mx-auto mt-4 flex max-w-5xl items-center justify-between font-mono text-xs text-muted-foreground">
-            <button type="button" disabled={!prevId} onClick={() => prevId && navigate(`/artwork/${prevId}`)} className="h-9 min-h-0 rounded-md px-3 hover:bg-secondary disabled:opacity-30">הקודמת</button>
+            <button type="button" disabled={!prevId} onClick={() => prevId && navigate(`/artwork/${prevId}`)} className="arch-btn arch-btn-quiet">הקודמת</button>
             <span>{MEDIA_LABEL[(artwork.media_type || "image") as MediaType]}{pos >= 0 && ` · ${pos + 1} / ${siblings.length}`}</span>
-            <button type="button" disabled={!nextId} onClick={() => nextId && navigate(`/artwork/${nextId}`)} className="h-9 min-h-0 rounded-md px-3 hover:bg-secondary disabled:opacity-30">הבאה</button>
+            <button type="button" disabled={!nextId} onClick={() => nextId && navigate(`/artwork/${nextId}`)} className="arch-btn arch-btn-quiet">הבאה</button>
           </div>
 
           <div className="mx-auto mt-6 max-w-3xl">
@@ -193,7 +193,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                 {(artwork.tags ?? []).map((tag: string) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-border px-3 py-1 font-mono text-[11px] text-muted-foreground"
+                    className="border border-border px-2.5 py-1 font-mono text-[10px] tracking-[0.1em] text-muted-foreground"
                   >
                     {tag}
                   </span>
@@ -203,12 +203,12 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
 
             <div className="mt-4 flex flex-wrap gap-2">
               {artwork.style && (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+                <span className="rounded-none bg-secondary px-3 py-1 text-xs text-muted-foreground">
                   סגנון: {artwork.style}
                 </span>
               )}
               {artwork.concept && (
-                <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
+                <span className="rounded-none bg-secondary px-3 py-1 text-xs text-muted-foreground">
                   קונספט: {artwork.concept}
                 </span>
               )}

@@ -81,7 +81,7 @@ const ImageDropZone = ({ value, onChange, bucket = "neo-gallery-images", folder 
               type="button"
               onClick={(e) => { e.stopPropagation(); onChange(""); }}
               aria-label="הסרת תמונה"
-              className="absolute right-2 top-2 flex h-7 items-center justify-center rounded-full bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-destructive"
+              className="absolute right-2 top-2 flex h-7 items-center justify-center rounded-none bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-destructive"
             >
               הסרה
             </button>
@@ -89,7 +89,7 @@ const ImageDropZone = ({ value, onChange, bucket = "neo-gallery-images", folder 
               type="button"
               onClick={(e) => { e.stopPropagation(); fileRef.current?.click(); }}
               aria-label="העלאת תמונה אחרת"
-              className="absolute bottom-2 right-2 flex h-7 items-center justify-center rounded-full bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-primary"
+              className="absolute bottom-2 right-2 flex h-7 items-center justify-center rounded-none bg-background/80 px-2 text-xs text-muted-foreground backdrop-blur-sm hover:text-primary"
             >
               העלאה
             </button>
