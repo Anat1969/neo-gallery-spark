@@ -32,10 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ImageIcon, Plus, Pencil, Trash2, GripVertical, Upload, Heart,
-  DoorOpen, FolderInput,
-} from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
@@ -462,14 +458,12 @@ const GalleryRoom = () => {
       {/* ── Rooms section ────────────────────────────────── */}
       {!isLoading && gallery && (
         <section className="mb-10" dir="rtl">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <DoorOpen className="h-5 w-5 text-primary" />
               חדרים
             </h2>
             {isEditMode && (
               <Button size="sm" onClick={openNewRoom} className="gap-2">
-                <Plus className="h-4 w-4" />
                 חדר חדש
               </Button>
             )}
@@ -527,28 +521,30 @@ const GalleryRoom = () => {
                       <img src={room.cover_image} alt={room.name} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-1">
-                        <DoorOpen className="h-8 w-8 text-muted-foreground/30" />
+                        <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
                         {isEditMode && <p className="text-xs text-muted-foreground/60">גררי, הדביקי או לחצי להוספת תמונה</p>}
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center justify-between p-3">
-                    <span className="truncate text-sm font-semibold text-foreground">{room.name}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-1 p-3">
+                    <span className="min-w-0 truncate text-sm font-semibold text-foreground">{room.name}</span>
                     {isEditMode && (
                       <div className="flex shrink-0 gap-1">
                         <span
                           role="button"
                           onClick={(e) => openEditRoom(e, room)}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary"
+                          aria-label="עריכת חדר"
+                          className="flex h-7 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-primary"
                         >
-                          <Pencil className="h-3.5 w-3.5" />
+                          עריכה
                         </span>
                         <span
                           role="button"
                           onClick={(e) => { e.stopPropagation(); setDeleteRoomTarget(room); }}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
+                          aria-label="מחיקת חדר"
+                          className="flex h-7 items-center justify-center rounded-md px-2 text-xs text-muted-foreground transition-colors hover:text-destructive"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          מחיקה
                         </span>
                       </div>
                     )}
@@ -572,9 +568,6 @@ const GalleryRoom = () => {
 
           {(artworks as any[]).length === 0 && !isEditMode && (
             <div className="flex flex-col items-center justify-center gap-4 py-16">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-                <ImageIcon className="h-8 w-8 text-muted-foreground" />
-              </div>
               <p className="text-lg text-muted-foreground">הגלריה ריקה — הוסיפי יצירה ראשונה</p>
             </div>
           )}
@@ -594,33 +587,36 @@ const GalleryRoom = () => {
                   onClick={() => navigate(`/artwork/${artwork.id}`)}
                 >
                   {isEditMode && (
-                    <div className="absolute right-2 top-2 z-10 flex gap-1">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm cursor-grab" onMouseDown={(e) => e.stopPropagation()}>
-                        <GripVertical className="h-3.5 w-3.5" />
+                    <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap gap-1">
+                      <span aria-label="גרירה לשינוי סדר" className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm cursor-grab" onMouseDown={(e) => e.stopPropagation()}>
+                        גרירה
                       </span>
                       {(rooms as any[]).length > 0 && (
                         <span
                           role="button"
                           title="העברה לחדר"
                           onClick={(e) => openMoveDialog(e, artwork)}
-                          className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
+                          aria-label="העברה לחדר"
+                          className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
                         >
-                          <FolderInput className="h-3.5 w-3.5" />
+                          העברה לחדר
                         </span>
                       )}
                       <span
                         role="button"
                         onClick={(e) => { e.stopPropagation(); handleEdit(artwork); }}
-                        className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
+                        aria-label="עריכת יצירה"
+                        className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
                       >
-                        <Pencil className="h-3.5 w-3.5" />
+                        עריכה
                       </span>
                       <span
                         role="button"
                         onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: artwork.id, title: artwork.title }); }}
-                        className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
+                        aria-label="מחיקת יצירה"
+                        className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        מחיקה
                       </span>
                     </div>
                   )}
@@ -660,7 +656,7 @@ const GalleryRoom = () => {
                       <img src={artwork.image_url} alt={artwork.title} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-2">
-                        <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+                        <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
                         {isEditMode && <p className="text-xs text-muted-foreground/60">גררי או הדביקי תמונה</p>}
                       </div>
                     )}
@@ -684,9 +680,11 @@ const GalleryRoom = () => {
                     </div>
                     <button
                       onClick={(e) => handleToggleFavorite(e, artwork.id)}
-                      className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground/40 hover:text-primary"}`}
+                      aria-label={getFavoriteId(artwork.id) ? "הסרה מהמועדפים" : "שמירה למועדפים"}
+                      aria-pressed={!!getFavoriteId(artwork.id)}
+                      className={`mt-0.5 flex h-8 shrink-0 items-center justify-center rounded-full px-2 text-xs transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
                     >
-                      <Heart className={`h-4 w-4 ${getFavoriteId(artwork.id) ? "fill-primary" : ""}`} />
+                      {getFavoriteId(artwork.id) ? "שמור" : "שמירה"}
                     </button>
                   </div>
                 </div>
@@ -717,8 +715,6 @@ const GalleryRoom = () => {
                   className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
                   style={{ minHeight: "280px" }}
                 >
-                  <Upload className="h-8 w-8" />
-                  <Plus className="h-10 w-10" />
                   <span className="text-sm font-medium">הוסיפי יצירה או גררי תמונה</span>
                 </div>
               )}
