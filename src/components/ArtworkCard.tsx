@@ -11,14 +11,6 @@ import { buildCrumbs } from "@/lib/breadcrumbs";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import {
-  ArrowRight,
-  Heart,
-  ExternalLink,
-  ImageIcon,
-  X,
-  Pencil,
-} from "lucide-react";
 
 interface ArtworkCardProps {
   asModal?: boolean;
@@ -41,9 +33,9 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
     queryKey: ["artwork", id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("artworks")
+        .from("neo_artworks")
         .select(
-          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:galleries(id, name, slug, category, project_name, app_name)",
+          "id, title, topic, post, tags, style, concept, year, image_url, inspiration_url, inspiration_label, gallery_id, gallery:neo_galleries(id, name, slug, category, project_name, app_name)",
         )
         .eq("id", id!)
         .maybeSingle();
@@ -60,7 +52,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
     queryKey: ["category-meta", galleryMeta?.category],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
+        .from("neo_categories")
         .select("id, name, project_name, app_name")
         .eq("name", galleryMeta.category)
         .maybeSingle();
@@ -73,7 +65,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
   const { data: favoriteRow } = useQuery<{ id: string } | null>({
     queryKey: ["favorite", id, user?.id],
     queryFn: async () => {
-      const favoritesQuery = supabase.from("favorites" as any) as any;
+      const favoritesQuery = supabase.from("neo_favorites" as any) as any;
       const { data, error } = await favoritesQuery
         .select("id")
         .eq("user_id", user!.id)
@@ -99,7 +91,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
 
     if (isFavorited && favoriteRow?.id) {
       const { error } = await supabase
-        .from("favorites" as any)
+        .from("neo_favorites" as any)
         .delete()
         .eq("id", favoriteRow.id)
         .eq("user_id", user.id);
@@ -112,7 +104,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
       toast({ title: "הוסר מהמועדפים" });
     } else {
       const { error } = await supabase
-        .from("favorites" as any)
+        .from("neo_favorites" as any)
         .insert({ user_id: user.id, artwork_id: id });
 
       if (error) {
@@ -135,9 +127,10 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
         {asModal ? (
           <button
             onClick={onClose}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="סגירה"
+            className="flex h-11 items-center justify-center rounded-lg px-3 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
-            <X className="h-5 w-5" />
+            סגירה
           </button>
         ) : (
           <PageBreadcrumb
@@ -156,7 +149,6 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             onClick={() => navigate(`/gallery/${artwork.gallery.slug}`)}
             className="gap-2 border-primary text-primary hover:bg-primary/10"
           >
-            <Pencil className="h-4 w-4" />
             עריכה
           </Button>
         )}
@@ -185,8 +177,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
           {imageMissing ? (
             <div className="mx-auto flex aspect-[3/2] max-h-[60vh] max-w-4xl items-center justify-center rounded-lg bg-secondary">
               <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                <ImageIcon className="h-12 w-12" />
-                <span className="text-sm">אין תמונה</span>
+                <span className="font-mono text-sm">אין תמונה</span>
               </div>
             </div>
           ) : (
@@ -266,7 +257,6 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                 className="mt-3 inline-flex items-center gap-1 text-sm text-primary transition-colors hover:text-primary/80"
               >
                 מקור השראה — {artwork.inspiration_label ?? "קישור"}
-                <ExternalLink className="h-3.5 w-3.5" />
               </a>
             )}
 
@@ -279,7 +269,6 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                     isFavorited ? "border-primary text-primary" : "text-muted-foreground"
                   } hover:border-primary hover:text-primary`}
                 >
-                  <Heart className={`h-4 w-4 ${isFavorited ? "fill-primary" : ""}`} />
                   שמור למועדפים
                 </Button>
 

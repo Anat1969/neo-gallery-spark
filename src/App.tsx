@@ -30,6 +30,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AppHeader />
+            <main className="pt-16">
             <Routes>
               {/* Public */}
               <Route path="/" element={<Index />} />
@@ -48,6 +49,7 @@ const App = () => (
 
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </main>
             <EditModeToggle />
           </BrowserRouter>
         </EditModeProvider>

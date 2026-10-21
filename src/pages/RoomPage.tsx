@@ -16,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ImageIcon, Plus, Pencil, Trash2, GripVertical, Heart, FolderMinus } from "lucide-react";
 import ArtworkFormDialog from "@/components/ArtworkFormDialog";
 import PageBreadcrumb from "@/components/PageBreadcrumb";
 import { buildCrumbs } from "@/lib/breadcrumbs";
@@ -41,7 +40,7 @@ const RoomPage = () => {
     queryKey: ["gallery", gallerySlug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("galleries")
+        .from("neo_galleries")
         .select("*")
         .eq("slug", gallerySlug!)
         .single();
@@ -56,7 +55,7 @@ const RoomPage = () => {
     queryKey: ["room", gallery?.id, roomSlug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("rooms" as any)
+        .from("neo_rooms" as any)
         .select("*")
         .eq("gallery_id", gallery!.id)
         .eq("slug", roomSlug!)
@@ -72,7 +71,7 @@ const RoomPage = () => {
     queryKey: ["favorites", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("favorites" as any)
+        .from("neo_favorites" as any)
         .select("id, artwork_id")
         .eq("user_id", user!.id);
       if (error) throw error;
@@ -86,7 +85,7 @@ const RoomPage = () => {
     queryKey: ["room-artworks", room?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("artworks" as any)
+        .from("neo_artworks" as any)
         .select("*")
         .eq("room_id", room!.id)
         .order("sort_order", { ascending: true });
@@ -114,10 +113,10 @@ const RoomPage = () => {
     }
     const existingId = getFavoriteId(artworkId);
     if (existingId) {
-      await supabase.from("favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
+      await supabase.from("neo_favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
       toast({ title: "הוסר מהמועדפים" });
     } else {
-      await supabase.from("favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
+      await supabase.from("neo_favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
       toast({ title: "נשמר במועדפים" });
     }
     queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
@@ -127,7 +126,7 @@ const RoomPage = () => {
     if (!gallery || !room) return;
     const nextOrder = artworks.length > 0 ? Math.max(...artworks.map((a: any) => a.sort_order)) + 1 : 0;
     const { error } = await supabase
-      .from("artworks")
+      .from("neo_artworks")
       .insert({ title: "יצירה חדשה", gallery_id: gallery.id, room_id: room.id, sort_order: nextOrder } as any)
       .select()
       .single();
@@ -158,7 +157,7 @@ const RoomPage = () => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    const { error } = await supabase.from("artworks").delete().eq("id", deleteTarget.id);
+    const { error } = await supabase.from("neo_artworks").delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "שגיאה", description: error.message, variant: "destructive" });
     } else {
@@ -172,7 +171,7 @@ const RoomPage = () => {
   const handleRemoveFromRoom = async (e: React.MouseEvent, artworkId: string) => {
     e.stopPropagation();
     const { error } = await supabase
-      .from("artworks")
+      .from("neo_artworks")
       .update({ room_id: null } as any)
       .eq("id", artworkId);
     if (error) {
@@ -194,7 +193,7 @@ const RoomPage = () => {
     queryClient.setQueryData(["room-artworks", room?.id], reordered);
     setDragIdx(null);
     const updates = reordered.map((a: any, i) => ({ id: a.id, sort_order: i }));
-    await Promise.all(updates.map((u) => supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
+    await Promise.all(updates.map((u) => supabase.from("neo_artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
     refresh();
   };
 
@@ -225,7 +224,7 @@ const RoomPage = () => {
             inputClassName="text-3xl font-bold md:text-4xl"
             onSave={async (newName) => {
               const { error } = await supabase
-                .from("rooms" as any)
+                .from("neo_rooms" as any)
                 .update({ name: newName })
                 .eq("id", room.id);
               if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
@@ -251,16 +250,12 @@ const RoomPage = () => {
 
       {!isLoading && room && artworks.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
-            <ImageIcon className="h-8 w-8 text-muted-foreground" />
-          </div>
           <p className="text-lg text-muted-foreground">החדר ריק — הוסיפי יצירות מהגלריה</p>
           {isEditMode && (
             <div
               onClick={handleAddInline}
               className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 px-8 py-6 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
             >
-              <Plus className="h-10 w-10" />
               <span className="text-sm font-medium">הוסיפי יצירה ראשונה</span>
             </div>
           )}
@@ -277,36 +272,39 @@ const RoomPage = () => {
               onDragOver={(e) => e.preventDefault()}
               onDrop={() => handleDrop(idx)}
               className={`group relative overflow-hidden rounded-lg border bg-card text-right transition-all cursor-pointer ${
-                dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_0_20px_hsl(76_90%_61%/0.1)]"
+                dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
               }`}
               onClick={() => navigate(`/artwork/${artwork.id}`)}
             >
               {isEditMode && (
-                <div className="absolute right-2 top-2 z-10 flex gap-1">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm cursor-grab">
-                    <GripVertical className="h-3.5 w-3.5" />
+                <div className="absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-wrap gap-1">
+                  <span aria-label="גרירה לשינוי סדר" className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm cursor-grab">
+                    גרירה
                   </span>
                   <span
                     role="button"
                     onClick={(e) => handleRemoveFromRoom(e, artwork.id)}
                     title="הוצא מהחדר"
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-amber-500 cursor-pointer"
+                    aria-label="הוצאה מהחדר"
+                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-amber-500 cursor-pointer"
                   >
-                    <FolderMinus className="h-3.5 w-3.5" />
+                    הוצאה מהחדר
                   </span>
                   <span
                     role="button"
                     onClick={(e) => { e.stopPropagation(); handleEdit(artwork); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
+                    aria-label="עריכת יצירה"
+                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-primary cursor-pointer"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    עריכה
                   </span>
                   <span
                     role="button"
                     onClick={(e) => { e.stopPropagation(); setDeleteTarget({ id: artwork.id, title: artwork.title }); }}
-                    className="flex h-8 w-8 items-center justify-center rounded-md bg-card/90 text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
+                    aria-label="מחיקת יצירה"
+                    className="flex h-8 items-center justify-center rounded-md bg-card/90 px-2 text-xs text-muted-foreground backdrop-blur-sm transition-colors hover:text-destructive cursor-pointer"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    מחיקה
                   </span>
                 </div>
               )}
@@ -315,7 +313,7 @@ const RoomPage = () => {
                   <img src={artwork.image_url} alt={artwork.title} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center">
-                    <ImageIcon className="h-10 w-10 text-muted-foreground/40" />
+                    <span className="font-mono text-xs text-muted-foreground">אין תמונה</span>
                   </div>
                 )}
               </div>
@@ -326,9 +324,11 @@ const RoomPage = () => {
                 </div>
                 <button
                   onClick={(e) => handleToggleFavorite(e, artwork.id)}
-                  className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground/40 hover:text-primary"}`}
+                  aria-label={getFavoriteId(artwork.id) ? "הסרה מהמועדפים" : "שמירה למועדפים"}
+                  aria-pressed={!!getFavoriteId(artwork.id)}
+                  className={`mt-0.5 flex h-8 shrink-0 items-center justify-center rounded-full px-2 text-xs transition-colors ${getFavoriteId(artwork.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
                 >
-                  <Heart className={`h-4 w-4 ${getFavoriteId(artwork.id) ? "fill-primary" : ""}`} />
+                  {getFavoriteId(artwork.id) ? "שמור" : "שמירה"}
                 </button>
               </div>
             </div>
@@ -339,7 +339,6 @@ const RoomPage = () => {
               className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-card/50 text-muted-foreground transition-all hover:border-primary/60 hover:text-primary"
               style={{ minHeight: "280px" }}
             >
-              <Plus className="h-10 w-10" />
               <span className="text-sm font-medium">הוסיפי יצירה</span>
             </div>
           )}

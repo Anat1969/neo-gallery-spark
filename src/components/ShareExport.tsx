@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Share2, Printer, Mail, Link2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -87,17 +86,17 @@ const ShareExport = ({
     });
 
   const actions = [
-    { key: "share", label: "שתפי", icon: Share2, onClick: handleShare },
-    { key: "print", label: "הדפיסי", icon: Printer, onClick: handlePrint },
-    { key: "email", label: "שלחי", icon: Mail, onClick: handleEmail },
-    { key: "copy", label: "העתיקי קישור", icon: Link2, onClick: handleCopyLink },
+    { key: "share", label: "שתפי", onClick: handleShare },
+    { key: "print", label: "הדפיסי", onClick: handlePrint },
+    { key: "email", label: "שלחי", onClick: handleEmail },
+    { key: "copy", label: "העתיקי קישור", onClick: handleCopyLink },
   ];
 
   return (
     <>
       {/* Action bar */}
       <div className="flex flex-wrap gap-2">
-        {actions.map(({ key, label, icon: Icon, onClick }) => (
+        {actions.map(({ key, label, onClick }) => (
           <Button
             key={key}
             variant="outline"
@@ -105,7 +104,6 @@ const ShareExport = ({
             disabled={loading !== null}
             className="gap-2 border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"
           >
-            <Icon className="h-4 w-4" />
             {label}
           </Button>
         ))}
@@ -116,7 +114,6 @@ const ShareExport = ({
             disabled={loading !== null}
             className="gap-2 border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"
           >
-            <Download className="h-4 w-4" />
             ייצאי נתונים
           </Button>
         )}

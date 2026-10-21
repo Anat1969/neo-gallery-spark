@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      artworks: {
+      neo_artworks: {
         Row: {
           concept: string | null
           created_at: string
@@ -74,19 +74,19 @@ export type Database = {
             foreignKeyName: "artworks_gallery_id_fkey"
             columns: ["gallery_id"]
             isOneToOne: false
-            referencedRelation: "galleries"
+            referencedRelation: "neo_galleries"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "artworks_room_id_fkey"
             columns: ["room_id"]
             isOneToOne: false
-            referencedRelation: "rooms"
+            referencedRelation: "neo_rooms"
             referencedColumns: ["id"]
           },
         ]
       }
-      categories: {
+      neo_categories: {
         Row: {
           app_name: string | null
           created_at: string
@@ -113,7 +113,7 @@ export type Database = {
         }
         Relationships: []
       }
-      favorites: {
+      neo_favorites: {
         Row: {
           artwork_id: string
           created_at: string
@@ -137,12 +137,12 @@ export type Database = {
             foreignKeyName: "favorites_artwork_id_fkey"
             columns: ["artwork_id"]
             isOneToOne: false
-            referencedRelation: "artworks"
+            referencedRelation: "neo_artworks"
             referencedColumns: ["id"]
           },
         ]
       }
-      galleries: {
+      neo_galleries: {
         Row: {
           app_name: string | null
           category: string
@@ -214,7 +214,7 @@ export type Database = {
         }
         Relationships: []
       }
-      rooms: {
+      neo_rooms: {
         Row: {
           app_name: string | null
           cover_image: string | null
@@ -259,7 +259,7 @@ export type Database = {
             foreignKeyName: "rooms_gallery_id_fkey"
             columns: ["gallery_id"]
             isOneToOne: false
-            referencedRelation: "galleries"
+            referencedRelation: "neo_galleries"
             referencedColumns: ["id"]
           },
         ]
@@ -287,6 +287,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      neo_is_admin: {
+        Args: Record<string, never>
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

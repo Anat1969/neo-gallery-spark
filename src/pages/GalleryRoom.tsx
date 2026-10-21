@@ -63,7 +63,7 @@ const GalleryRoom = () => {
     queryKey: ["favorites", user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("favorites" as any)
+        .from("neo_favorites" as any)
         .select("id, artwork_id")
         .eq("user_id", user!.id);
       if (error) throw error;
@@ -84,10 +84,10 @@ const GalleryRoom = () => {
     }
     const existingId = getFavoriteId(artworkId);
     if (existingId) {
-      await supabase.from("favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
+      await supabase.from("neo_favorites" as any).delete().eq("id", existingId).eq("user_id", user.id);
       toast({ title: "הוסר מהמועדפים" });
     } else {
-      await supabase.from("favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
+      await supabase.from("neo_favorites" as any).insert({ user_id: user.id, artwork_id: artworkId });
       toast({ title: "נשמר במועדפים" });
     }
     queryClient.invalidateQueries({ queryKey: ["favorites", user.id] });
@@ -116,7 +116,7 @@ const GalleryRoom = () => {
     queryKey: ["gallery", slug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("galleries")
+        .from("neo_galleries")
         .select("*")
         .eq("slug", slug!)
         .single();
@@ -131,7 +131,7 @@ const GalleryRoom = () => {
     queryKey: ["category-meta", gallery?.category],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("categories")
+        .from("neo_categories")
         .select("id, name, project_name, app_name")
         .eq("name", gallery!.category)
         .maybeSingle();
@@ -147,7 +147,7 @@ const GalleryRoom = () => {
     queryFn: async () => {
       try {
         const { data, error } = await supabase
-          .from("rooms" as any)
+          .from("neo_rooms" as any)
           .select("*")
           .eq("gallery_id", gallery!.id)
           .order("sort_order", { ascending: true });
@@ -166,7 +166,7 @@ const GalleryRoom = () => {
     queryFn: async () => {
       // Try with room_id filter first (post-migration)
       const { data, error } = await supabase
-        .from("artworks")
+        .from("neo_artworks")
         .select("*")
         .eq("gallery_id", gallery!.id)
         .is("room_id" as any, null)
@@ -175,7 +175,7 @@ const GalleryRoom = () => {
       if (error) {
         // Migration not applied yet — fall back to all artworks
         const { data: fallback } = await supabase
-          .from("artworks")
+          .from("neo_artworks")
           .select("*")
           .eq("gallery_id", gallery!.id)
           .order("sort_order", { ascending: true });
@@ -218,7 +218,7 @@ const GalleryRoom = () => {
     if (!gallery) return;
     const nextOrder = artworks.length > 0 ? Math.max(...(artworks as any[]).map(a => a.sort_order)) + 1 : 0;
     const { error } = await supabase
-      .from("artworks")
+      .from("neo_artworks")
       .insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder })
       .select()
       .single();
@@ -246,7 +246,7 @@ const GalleryRoom = () => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    const { error } = await supabase.from("artworks").delete().eq("id", deleteTarget.id);
+    const { error } = await supabase.from("neo_artworks").delete().eq("id", deleteTarget.id);
     if (error) {
       toast({ title: "שגיאה", description: error.message, variant: "destructive" });
     } else {
@@ -266,7 +266,7 @@ const GalleryRoom = () => {
     queryClient.setQueryData(["artworks", gallery?.id], reordered);
     setDragIdx(null);
     const updates = reordered.map((a: any, i) => ({ id: a.id, sort_order: i }));
-    const results = await Promise.all(updates.map((u) => supabase.from("artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
+    const results = await Promise.all(updates.map((u) => supabase.from("neo_artworks").update({ sort_order: u.sort_order }).eq("id", u.id)));
     const firstError = results.find((r) => r.error)?.error;
     if (firstError) toast({ title: "שגיאה", description: firstError.message, variant: "destructive" });
     else toast({ title: "סדר היצירות עודכן" });
@@ -283,7 +283,7 @@ const GalleryRoom = () => {
   const handleMoveToRoom = async () => {
     if (!moveArtwork || !selectedRoomId) return;
     const { error } = await supabase
-      .from("artworks")
+      .from("neo_artworks")
       .update({ room_id: selectedRoomId } as any)
       .eq("id", moveArtwork.id);
     if (error) {
@@ -320,11 +320,11 @@ const GalleryRoom = () => {
     try {
       const ext = file.name.split(".").pop() ?? "png";
       const path = `room-covers/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
       if (error) throw error;
-      const { data } = supabase.storage.from("artwork-images").getPublicUrl(path);
+      const { data } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
       const { error: updateError } = await supabase
-        .from("rooms" as any)
+        .from("neo_rooms" as any)
         .update({ cover_image: data.publicUrl })
         .eq("id", roomId);
       if (updateError) throw updateError;
@@ -347,7 +347,7 @@ const GalleryRoom = () => {
     try {
       if (editingRoom) {
         const { error } = await supabase
-          .from("rooms" as any)
+          .from("neo_rooms" as any)
           .update({ name: roomForm.name, slug: normalizedSlug, description: roomForm.description, cover_image: roomForm.cover_image })
           .eq("id", editingRoom.id);
         if (error) throw error;
@@ -355,7 +355,7 @@ const GalleryRoom = () => {
       } else {
         const nextOrder = rooms.length > 0 ? Math.max(...(rooms as any[]).map(r => r.sort_order)) + 1 : 0;
         const { error } = await supabase
-          .from("rooms" as any)
+          .from("neo_rooms" as any)
           .insert({ gallery_id: gallery.id, name: roomForm.name, slug: normalizedSlug, description: roomForm.description, cover_image: roomForm.cover_image, sort_order: nextOrder });
         if (error) throw error;
         toast({ title: "החדר נוצר" });
@@ -371,7 +371,7 @@ const GalleryRoom = () => {
 
   const handleDeleteRoom = async () => {
     if (!deleteRoomTarget) return;
-    const { error } = await supabase.from("rooms" as any).delete().eq("id", deleteRoomTarget.id);
+    const { error } = await supabase.from("neo_rooms" as any).delete().eq("id", deleteRoomTarget.id);
     if (error) {
       toast({ title: "שגיאה", description: error.message, variant: "destructive" });
     } else {
@@ -421,7 +421,7 @@ const GalleryRoom = () => {
               className="text-3xl font-bold text-foreground md:text-4xl"
               inputClassName="text-3xl font-bold md:text-4xl"
               onSave={async (newName) => {
-                const { error } = await supabase.from("galleries").update({ name: newName }).eq("id", gallery.id);
+                const { error } = await supabase.from("neo_galleries").update({ name: newName }).eq("id", gallery.id);
                 if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
                 queryClient.invalidateQueries({ queryKey: ["gallery", slug] });
                 toast({ title: "שם הגלריה עודכן" });
@@ -485,7 +485,7 @@ const GalleryRoom = () => {
                 <div
                   key={room.id}
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
-                  className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-[0_0_16px_hsl(76_90%_61%/0.12)]"
+                  className="group relative flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
                 >
                   <div
                     className={`relative aspect-video overflow-hidden bg-secondary ${isEditMode ? "outline-dashed outline-1 outline-muted-foreground/20" : ""}`}
@@ -589,7 +589,7 @@ const GalleryRoom = () => {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={() => handleDrop(idx)}
                   className={`group relative overflow-hidden rounded-lg border bg-card text-right transition-all cursor-pointer ${
-                    dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_0_20px_hsl(76_90%_61%/0.1)]"
+                    dragIdx === idx ? "border-primary opacity-50" : "border-border hover:border-primary/40 hover:shadow-[0_18px_40px_-16px_rgba(0,0,0,0.75)]"
                   }`}
                   onClick={() => navigate(`/artwork/${artwork.id}`)}
                 >
@@ -634,10 +634,10 @@ const GalleryRoom = () => {
                       if (!file?.type.startsWith("image/")) return;
                       const ext = file.name.split(".").pop() ?? "png";
                       const path = `artworks/${crypto.randomUUID()}.${ext}`;
-                      const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+                      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
                       if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                      const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
-                      await supabase.from("artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
+                      const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
+                      await supabase.from("neo_artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
                       queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
                       toast({ title: "התמונה עודכנה" });
                     }}
@@ -647,10 +647,10 @@ const GalleryRoom = () => {
                       if (!file) return;
                       e.preventDefault();
                       const path = `artworks/${crypto.randomUUID()}.png`;
-                      const { error } = await supabase.storage.from("artwork-images").upload(path, file);
+                      const { error } = await supabase.storage.from("neo-gallery-images").upload(path, file);
                       if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
-                      const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
-                      await supabase.from("artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
+                      const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
+                      await supabase.from("neo_artworks").update({ image_url: urlData.publicUrl }).eq("id", artwork.id);
                       queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
                       toast({ title: "התמונה עודכנה" });
                     }}
@@ -674,7 +674,7 @@ const GalleryRoom = () => {
                         className="text-base font-semibold text-foreground"
                         inputClassName="text-base font-semibold w-full"
                         onSave={async (newTitle) => {
-                          const { error } = await supabase.from("artworks").update({ title: newTitle }).eq("id", artwork.id);
+                          const { error } = await supabase.from("neo_artworks").update({ title: newTitle }).eq("id", artwork.id);
                           if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
                           refresh();
                           toast({ title: "שם היצירה עודכן" });
@@ -706,10 +706,10 @@ const GalleryRoom = () => {
                     const nextOrder = (artworks as any[]).length > 0 ? Math.max(...(artworks as any[]).map(a => a.sort_order)) + 1 : 0;
                     const ext = file.name.split(".").pop() ?? "png";
                     const path = `artworks/${crypto.randomUUID()}.${ext}`;
-                    const { error: uploadErr } = await supabase.storage.from("artwork-images").upload(path, file);
+                    const { error: uploadErr } = await supabase.storage.from("neo-gallery-images").upload(path, file);
                     if (uploadErr) { toast({ title: "שגיאה", description: uploadErr.message, variant: "destructive" }); return; }
-                    const { data: urlData } = supabase.storage.from("artwork-images").getPublicUrl(path);
-                    const { error } = await supabase.from("artworks").insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder, image_url: urlData.publicUrl }).select().single();
+                    const { data: urlData } = supabase.storage.from("neo-gallery-images").getPublicUrl(path);
+                    const { error } = await supabase.from("neo_artworks").insert({ title: "יצירה חדשה", gallery_id: gallery.id, sort_order: nextOrder, image_url: urlData.publicUrl }).select().single();
                     if (error) { toast({ title: "שגיאה", description: error.message, variant: "destructive" }); return; }
                     refresh();
                     toast({ title: "יצירה נוספה עם תמונה" });

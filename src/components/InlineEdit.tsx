@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { Pencil } from "lucide-react";
 
 interface InlineEditProps {
   value: string;
@@ -85,13 +84,17 @@ const InlineEdit = ({
     >
       {value || placeholder}
       {enabled && (
-        <Pencil
-          className="mr-1.5 inline h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover/inline:opacity-100"
+        <span
+          role="button"
+          aria-label="עריכה"
+          className="mr-1.5 inline text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-hover/inline:opacity-100"
           onClick={(e) => {
             e.stopPropagation();
             setEditing(true);
           }}
-        />
+        >
+          עריכה
+        </span>
       )}
     </Tag>
   );
