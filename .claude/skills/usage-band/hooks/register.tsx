@@ -21,7 +21,7 @@ const WINDOW_MS: Record<string, number> = { five_hour: 5 * HOUR, seven_day: 7 * 
 const DAILY_SHARE = 100 / 7
 
 const LABELS: Record<string, string> = {
-  five_hour: '5 ש׳',
+  five_hour: '5 שעות',
   seven_day: 'שבוע',
   spend_limit: 'תקציב',
 }
@@ -29,8 +29,6 @@ const LABELS: Record<string, string> = {
 const DAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
 
 const round1 = (n: number) => Math.round(n * 10) / 10
-
-const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`)
 
 const dateKey = (ms: number) => {
   const d = new Date(ms)
@@ -42,7 +40,7 @@ const resetText = (l: Limit) => {
   const d = new Date(l.resetsAt)
   if (Number.isNaN(d.getTime())) return ''
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return l.kind === 'seven_day' ? ` עד ${DAYS[d.getDay()]} ${time}` : ` עד ${time}`
+  return l.kind === 'seven_day' ? `, מתאפס ביום ${DAYS[d.getDay()]} ${time}` : `, מתאפס ב-${time}`
 }
 
 // How much of the window's time has passed, so used% can be read against it.
@@ -89,13 +87,13 @@ const partsOf = (m: Meters, now: number): Part[] => {
   const parts: Part[] = []
 
   if (m.today !== undefined) {
-    parts.push({ text: `היום ${m.today}% מתוך ${round1(DAILY_SHARE)}%`, level: (m.today / DAILY_SHARE) * 100 })
+    parts.push({ text: `יום: ${m.today}% מתוך ${round1(DAILY_SHARE)}% מותרים`, level: (m.today / DAILY_SHARE) * 100 })
   }
 
   for (const l of limits) {
     const time = elapsed(l, now)
     parts.push({
-      text: `${LABELS[l.kind] ?? l.kind} ${l.percentUsed}%${time === undefined ? '' : ` · זמן ${time}%`}${resetText(l)}`,
+      text: `${LABELS[l.kind] ?? l.kind}: ${l.percentUsed}%${time === undefined ? '' : ` (עבר ${time}% מהזמן)`}${resetText(l)}`,
       level: l.percentUsed,
     })
   }
@@ -104,8 +102,8 @@ const partsOf = (m: Meters, now: number): Part[] => {
   parts.push({
     text:
       context.percent === undefined
-        ? `הקשר –/${tokens(context.window)}`
-        : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`,
+        ? `זיכרון השיחה: –`
+        : `זיכרון השיחה: ${context.percent}%`,
     level: context.percent ?? 0,
   })
 
