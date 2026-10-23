@@ -11,6 +11,8 @@ const LABELS: Record<string, string> = {
   spend_limit: 'תקציב',
 }
 
+const WARN_AT = 80
+
 const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`)
 
 const resetTime = (iso?: string) => {
@@ -51,13 +53,25 @@ export const register: Register = on => {
       context.percent === undefined
         ? `הקשר –/${tokens(context.window)}`
         : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`
-    const parts = [...m.rateLimits.map(limitText), contextText]
+    const parts = [
+      ...m.rateLimits.map(l => ({ text: limitText(l), percent: l.percentUsed })),
+      { text: contextText, percent: context.percent ?? 0 },
+    ]
 
     return (
       <Box>
-        <Text dimColor wrap="truncate">
-          {parts.join('  |  ')}
-        </Text>
+        {parts.flatMap((p, i) => [
+          ...(i > 0 ? [<Text key={`sep${i}`} dimColor>{'  |  '}</Text>] : []),
+          p.percent >= WARN_AT ? (
+            <Text key={`m${i}`} color="warning" bold>
+              {p.text}
+            </Text>
+          ) : (
+            <Text key={`m${i}`} dimColor>
+              {p.text}
+            </Text>
+          ),
+        ])}
       </Box>
     )
   })
