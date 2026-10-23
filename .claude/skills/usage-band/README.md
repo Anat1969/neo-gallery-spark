@@ -1,6 +1,6 @@
 # usage-band
 
-Cosmetic mod for Claude Code. Shows the usage meters (5-hour limit, weekly limit, context window) in a fixed dim row above the prompt, so they are always visible. Figures come unchanged from the engine (`$.session.usage()` and the `session.measure` event, the same numbers the status line reads); only placement and display change.
+Cosmetic mod for Claude Code. Shows the usage meters (5-hour limit, weekly limit, context window) in a fixed dim row above the prompt, so they are always visible. A meter at 80% or more turns to the warning color, in bold. Figures come unchanged from the engine (`$.session.usage()` and the `session.measure` event, the same numbers the status line reads); only placement and display change.
 
 ## Install
 
