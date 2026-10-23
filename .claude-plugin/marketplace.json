@@ -1,0 +1,7 @@
+{
+  "name": "anat-mods",
+  "owner": { "name": "Anat" },
+  "plugins": [
+    { "name": "usage-band", "source": "./.claude/skills/usage-band", "description": "Usage meters in a fixed row above the prompt" }
+  ]
+}

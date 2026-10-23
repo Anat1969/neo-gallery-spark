@@ -40,3 +40,6 @@
 - `npm run build`, `npm test`, ובדיקת Playwright מול `vite preview --host 127.0.0.1` עם מוקים לכל קריאות Supabase.
 - Vercel: הפרויקט `neo-gallery-spark`, ענף הייצור main. מיזוג ל-main מעדכן את הכתובת הראשית. ענת אישרה מיזוג קבוע אחרי בדיקה ירוקה.
 - Lovable כבר לא מקור האמת. לא לייצר מחדש את `src/integrations/supabase/client.ts` מ-Lovable.
+
+## מודים ל-Claude Code
+- `usage-band` ב-`.claude/skills/usage-band`: מדדי השימוש (5 שעות, שבועי, חלון הקשר) בשורה קבועה מעל תיבת הכתיבה. נטען לבד בכל שיחה על הריפו. התקנה במקום אחר: `/plugin install usage-band --marketplace anat1969/neo-gallery-spark` (הקובץ `.claude-plugin/marketplace.json`). קוסמטי בלבד, הנתונים מהמנוע כפי שהם.
