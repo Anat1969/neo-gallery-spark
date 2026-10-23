@@ -1,7 +1,18 @@
 {
   "name": "anat-mods",
-  "owner": { "name": "Anat" },
+  "owner": {
+    "name": "Anat"
+  },
   "plugins": [
-    { "name": "usage-band", "source": "./.claude/skills/usage-band", "description": "Usage meters in a fixed row above the prompt" }
+    {
+      "name": "usage-band",
+      "source": "./.claude/skills/usage-band",
+      "description": "Usage meters in a fixed row above the prompt"
+    },
+    {
+      "name": "insight-line",
+      "source": "./.claude/skills/insight-line",
+      "description": "One-sentence Hebrew insight at the end of each substantive answer"
+    }
   ]
 }
