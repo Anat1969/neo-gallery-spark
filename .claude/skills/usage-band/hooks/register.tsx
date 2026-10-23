@@ -12,6 +12,7 @@ const LABELS: Record<string, string> = {
 }
 
 const WARN_AT = 80
+const DANGER_AT = 95
 
 const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`)
 
@@ -63,7 +64,7 @@ export const register: Register = on => {
         {parts.flatMap((p, i) => [
           ...(i > 0 ? [<Text key={`sep${i}`} dimColor>{'  |  '}</Text>] : []),
           p.percent >= WARN_AT ? (
-            <Text key={`m${i}`} color="warning" bold>
+            <Text key={`m${i}`} color={p.percent >= DANGER_AT ? 'error' : 'warning'} bold>
               {p.text}
             </Text>
           ) : (
