@@ -1,46 +1,90 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
-import type { Limit, Meters } from '../types'
+import type { Context, Limit, Meters } from '../types'
 
 const meters = atom({ plugin: 'usage-band', key: 'meters' } as const, null)
-
-const LABELS: Record<string, string> = {
-  five_hour: 'שעתי (5 ש׳)',
-  seven_day: 'שבועי',
-  spend_limit: 'תקציב',
-}
 
 const WARN_AT = 80
 const DANGER_AT = 95
 
-const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`)
+const HOUR = 3600 * 1000
+const WINDOW_MS: Record<string, number> = { five_hour: 5 * HOUR, seven_day: 7 * 24 * HOUR }
 
-const resetTime = (iso?: string) => {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mm = String(d.getMinutes()).padStart(2, '0')
-  return ` עד ${hh}:${mm}`
+// A balanced week spends a seventh of the weekly limit per day.
+const DAILY_SHARE = 100 / 7
+
+const LABELS: Record<string, string> = {
+  five_hour: '5 ש׳',
+  seven_day: 'שבוע',
+  spend_limit: 'תקציב',
 }
 
-const limitText = (l: Limit) =>
-  `${LABELS[l.kind] ?? l.kind} ${l.percentUsed}%${resetTime(l.resetsAt)}`
+const DAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳']
+
+const round1 = (n: number) => Math.round(n * 10) / 10
+
+const tokens = (n: number) => (n >= 1000 ? `${Math.round(n / 1000)}K` : `${n}`)
+
+const dateKey = (ms: number) => {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+
+const resetText = (l: Limit) => {
+  if (!l.resetsAt) return ''
+  const d = new Date(l.resetsAt)
+  if (Number.isNaN(d.getTime())) return ''
+  const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return l.kind === 'seven_day' ? ` עד ${DAYS[d.getDay()]} ${time}` : ` עד ${time}`
+}
+
+// How much of the window's time has passed, so used% can be read against it.
+const elapsed = (l: Limit, now: number) => {
+  const length = WINDOW_MS[l.kind]
+  const resetsAt = l.resetsAt ? Date.parse(l.resetsAt) : NaN
+  if (!length || Number.isNaN(resetsAt)) return undefined
+  return Math.min(100, Math.max(0, Math.round((1 - (resetsAt - now) / length) * 100)))
+}
+
+type DayBase = { date: string; base: number }
+
+// Today's share of the weekly limit: the weekly reading now, less the last
+// reading before today (kept in $.store, so it holds across sessions).
+const todayUsed = async ($: EngineInterface, rateLimits: Limit[]) => {
+  const week = rateLimits.find(l => l.kind === 'seven_day')
+  if (!week) return undefined
+
+  const date = dateKey(await $.clock.now())
+  const last = (await $.store.get('last')) as number | undefined
+  let day = (await $.store.get('dayBase')) as DayBase | undefined
+
+  if (day?.date !== date || week.percentUsed < day.base) {
+    const base = typeof last === 'number' && last <= week.percentUsed && day?.date !== date ? last : week.percentUsed
+    day = { date, base }
+    await $.store.set('dayBase', day)
+  }
+  await $.store.set('last', week.percentUsed)
+
+  return round1(week.percentUsed - day.base)
+}
+
+const measure = async ($: EngineInterface, context: Context, rateLimits: Limit[]) => {
+  const { tokens, window, percent } = context
+  const m: Meters = { context: { tokens, window, percent }, rateLimits, today: await todayUsed($, rateLimits) }
+  await update($, meters, () => m)
+}
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
     const { context, rateLimits } = await $.session.usage()
-    const m: Meters = { context: { tokens: context.tokens, window: context.window, percent: context.percent }, rateLimits }
-    await update($, meters, () => m)
+    await measure($, context, rateLimits)
     return result
   })
 
   on('session.measure', async ($, e, next) => {
-    const { tokens, window, percent } = e.context
-    const m: Meters = { context: { tokens, window, percent }, rateLimits: e.rateLimits }
-    await update($, meters, () => m)
+    await measure($, e.context, e.rateLimits)
     return next(e)
   })
 
@@ -49,22 +93,43 @@ export const register: Register = on => {
     if (e.props.hasSurvey || m === null) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
+    const now = await $.clock.now()
     const { context } = m
-    const contextText =
-      context.percent === undefined
-        ? `הקשר –/${tokens(context.window)}`
-        : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`
-    const parts = [
-      ...m.rateLimits.map(l => ({ text: limitText(l), percent: l.percentUsed })),
-      { text: contextText, percent: context.percent ?? 0 },
-    ]
+
+    const order = (l: Limit) => (l.kind === 'seven_day' ? 0 : l.kind === 'five_hour' ? 1 : 2)
+    const limits = [...m.rateLimits].sort((a, b) => order(a) - order(b))
+
+    const parts: { text: string; level: number }[] = []
+
+    if (m.today !== undefined) {
+      parts.push({
+        text: `היום ${m.today}% מתוך ${round1(DAILY_SHARE)}%`,
+        level: (m.today / DAILY_SHARE) * 100,
+      })
+    }
+
+    for (const l of limits) {
+      const time = elapsed(l, now)
+      parts.push({
+        text: `${LABELS[l.kind] ?? l.kind} ${l.percentUsed}%${time === undefined ? '' : ` · זמן ${time}%`}${resetText(l)}`,
+        level: l.percentUsed,
+      })
+    }
+
+    parts.push({
+      text:
+        context.percent === undefined
+          ? `הקשר –/${tokens(context.window)}`
+          : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`,
+      level: context.percent ?? 0,
+    })
 
     return (
       <Box>
         {parts.flatMap((p, i) => [
           ...(i > 0 ? [<Text key={`sep${i}`} dimColor>{'  |  '}</Text>] : []),
-          p.percent >= WARN_AT ? (
-            <Text key={`m${i}`} color={p.percent >= DANGER_AT ? 'error' : 'warning'} bold>
+          p.level >= WARN_AT ? (
+            <Text key={`m${i}`} color={p.level >= DANGER_AT ? 'error' : 'warning'} bold>
               {p.text}
             </Text>
           ) : (
