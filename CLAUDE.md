@@ -42,5 +42,5 @@
 - Lovable כבר לא מקור האמת. לא לייצר מחדש את `src/integrations/supabase/client.ts` מ-Lovable.
 
 ## מודים ל-Claude Code
-- `usage-band` ב-`.claude/skills/usage-band`: מדדי השימוש (5 שעות, שבועי, חלון הקשר) בשורה קבועה מעל תיבת הכתיבה, מדד מ-80% ומעלה בצבע אזהרה, ומ-95% באדום. "היום" מול מכסה יומית מאוזנת (100/7 של השבועי), ולשבוע ול-5 שעות "זמן" שעבר בחלון. אין חלון חודשי במנוע. נטען לבד בכל שיחה על הריפו. התקנה במקום אחר: `/plugin install usage-band --marketplace anat1969/neo-gallery-spark` (הקובץ `.claude-plugin/marketplace.json`). קוסמטי בלבד, הנתונים מהמנוע כפי שהם.
+- `usage-band` ב-`.claude/skills/usage-band`: מדדי השימוש (5 שעות, שבועי, חלון הקשר) בשורה קבועה מעל תיבת הכתיבה, מדד מ-80% ומעלה בצבע אזהרה, ומ-95% באדום. "היום" מול מכסה יומית מאוזנת (100/7 של השבועי), ולשבוע ול-5 שעות "זמן" שעבר בחלון. אין חלון חודשי במנוע. בטרמינל בפס מעל תיבת הכתיבה; באפליקציה ובדפדפן בחלונית (הפס לא מצויר שם), `/meters` פותח אותה מחדש. נטען לבד בכל שיחה על הריפו. התקנה במקום אחר: `/plugin install usage-band --marketplace anat1969/neo-gallery-spark` (הקובץ `.claude-plugin/marketplace.json`). קוסמטי בלבד, הנתונים מהמנוע כפי שהם.
 - `insight-line` ב-`.claude/skills/insight-line`: בסוף כל תשובה מהותית שורה "תובנה", משפט אחד בעברית שמזקק את השיחה. לא בשאלה ותשובה קצרה אחת. התקנה במקום אחר: `/plugin install insight-line --marketplace anat1969/neo-gallery-spark`.

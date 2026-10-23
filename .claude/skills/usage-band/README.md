@@ -4,6 +4,8 @@ Cosmetic mod for Claude Code. Shows the usage meters (5-hour limit, weekly limit
 
 Pacing: "today" is today's share of the weekly limit against a balanced day (100/7 = 14.3%); the week and the 5-hour window each show "time X%", the share of the window already elapsed. Spending at or under the time share is on pace. Today's baseline is the last weekly reading before today, kept in `$.store`.
 
+Where it shows: the terminal draws the row in the band above the prompt. The app and the browser do not draw that band, so there the same row opens in a pane (placed above the prompt); `/meters` reopens it after it is closed.
+
 ## Install
 
 Loads by itself in any Claude Code session opened on this repository (project `.claude/skills/usage-band`). Anywhere else:

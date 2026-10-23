@@ -1,9 +1,15 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, RenderSurface } from 'claude-code'
 
 import type { Context, Limit, Meters } from '../types'
 
 const meters = atom({ plugin: 'usage-band', key: 'meters' } as const, null)
+
+const PANE = 'usage-band'
+
+// The band above the prompt is drawn by the terminal; every other surface
+// (the app, the browser) draws a pane, which it places above the prompt.
+const isRemote = (s: RenderSurface) => s !== 'terminal'
 
 const WARN_AT = 80
 const DANGER_AT = 95
@@ -75,12 +81,83 @@ const measure = async ($: EngineInterface, context: Context, rateLimits: Limit[]
   await update($, meters, () => m)
 }
 
+type Part = { text: string; level: number }
+
+const partsOf = (m: Meters, now: number): Part[] => {
+  const order = (l: Limit) => (l.kind === 'seven_day' ? 0 : l.kind === 'five_hour' ? 1 : 2)
+  const limits = [...m.rateLimits].sort((a, b) => order(a) - order(b))
+  const parts: Part[] = []
+
+  if (m.today !== undefined) {
+    parts.push({ text: `היום ${m.today}% מתוך ${round1(DAILY_SHARE)}%`, level: (m.today / DAILY_SHARE) * 100 })
+  }
+
+  for (const l of limits) {
+    const time = elapsed(l, now)
+    parts.push({
+      text: `${LABELS[l.kind] ?? l.kind} ${l.percentUsed}%${time === undefined ? '' : ` · זמן ${time}%`}${resetText(l)}`,
+      level: l.percentUsed,
+    })
+  }
+
+  const { context } = m
+  parts.push({
+    text:
+      context.percent === undefined
+        ? `הקשר –/${tokens(context.window)}`
+        : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`,
+    level: context.percent ?? 0,
+  })
+
+  return parts
+}
+
+function openPane($: EngineInterface) {
+  void $.ui.open({ id: PANE, title: 'מדדי שימוש' })
+}
+
+async function draw($: EngineInterface, e: Parameters<EngineInterface['ui']['resolve']>[0]) {
+  const { Box, Text } = $.ui.resolve(e)
+  const m = await read($, meters)
+  if (m === null) return <Text dimColor>ממתין לקריאה הראשונה של המדדים</Text>
+
+  const parts = partsOf(m, await $.clock.now())
+  return (
+    <Box>
+      {parts.flatMap((p, i) => [
+        ...(i > 0 ? [<Text key={`sep${i}`} dimColor>{'  |  '}</Text>] : []),
+        p.level >= WARN_AT ? (
+          <Text key={`m${i}`} color={p.level >= DANGER_AT ? 'error' : 'warning'} bold>
+            {p.text}
+          </Text>
+        ) : (
+          <Text key={`m${i}`} dimColor>
+            {p.text}
+          </Text>
+        ),
+      ])}
+    </Box>
+  )
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    await $.command.register({ name: 'meters', description: 'הצגת מדדי השימוש בחלונית' })
+    if ((await $.session.surfaces()).some(isRemote)) openPane($)
     const { context, rateLimits } = await $.session.usage()
     await measure($, context, rateLimits)
     return result
+  })
+
+  on('session.attach', async ($, e, next) => {
+    if (isRemote(e.surface)) openPane($)
+    return next(e)
+  })
+
+  on('command.run', { command: 'meters' }, async $ => {
+    openPane($)
+    return { text: 'מדדי השימוש נפתחו בחלונית.' }
   })
 
   on('session.measure', async ($, e, next) => {
@@ -89,56 +166,9 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const m = await read($, meters)
-    if (e.props.hasSurvey || m === null) return next(e)
-
-    const { Box, Text } = $.ui.resolve(e)
-    const now = await $.clock.now()
-    const { context } = m
-
-    const order = (l: Limit) => (l.kind === 'seven_day' ? 0 : l.kind === 'five_hour' ? 1 : 2)
-    const limits = [...m.rateLimits].sort((a, b) => order(a) - order(b))
-
-    const parts: { text: string; level: number }[] = []
-
-    if (m.today !== undefined) {
-      parts.push({
-        text: `היום ${m.today}% מתוך ${round1(DAILY_SHARE)}%`,
-        level: (m.today / DAILY_SHARE) * 100,
-      })
-    }
-
-    for (const l of limits) {
-      const time = elapsed(l, now)
-      parts.push({
-        text: `${LABELS[l.kind] ?? l.kind} ${l.percentUsed}%${time === undefined ? '' : ` · זמן ${time}%`}${resetText(l)}`,
-        level: l.percentUsed,
-      })
-    }
-
-    parts.push({
-      text:
-        context.percent === undefined
-          ? `הקשר –/${tokens(context.window)}`
-          : `הקשר ${context.percent}% (${tokens(context.tokens ?? 0)}/${tokens(context.window)})`,
-      level: context.percent ?? 0,
-    })
-
-    return (
-      <Box>
-        {parts.flatMap((p, i) => [
-          ...(i > 0 ? [<Text key={`sep${i}`} dimColor>{'  |  '}</Text>] : []),
-          p.level >= WARN_AT ? (
-            <Text key={`m${i}`} color={p.level >= DANGER_AT ? 'error' : 'warning'} bold>
-              {p.text}
-            </Text>
-          ) : (
-            <Text key={`m${i}`} dimColor>
-              {p.text}
-            </Text>
-          ),
-        ])}
-      </Box>
-    )
+    if (e.props.hasSurvey || isRemote(e.surface) || (await read($, meters)) === null) return next(e)
+    return draw($, e)
   })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => draw($, e))
 }
