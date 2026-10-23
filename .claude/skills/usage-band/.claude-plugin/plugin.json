@@ -1,0 +1,1 @@
+{ "name": "usage-band", "version": "0.1.0", "description": "Usage meters (5-hour, weekly, context window) in a fixed row above the prompt", "license": "MIT", "author": { "name": "Anat" }, "types": "./types/index.d.ts" }
