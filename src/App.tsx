@@ -10,7 +10,6 @@ import { EditModeProvider } from "@/contexts/EditModeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { DockProvider } from "@/contexts/DockContext";
-import EditDock from "@/components/EditDock";
 import AppHeader from "@/components/AppHeader";
 import Index from "./pages/Index.tsx";
 
@@ -84,7 +83,6 @@ const App = () => (
                     </Routes>
                   </Suspense>
                 </main>
-                <EditDock />
               </BrowserRouter>
             </DockProvider>
           </EditModeProvider>

@@ -1,19 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "framer-motion";
 import { useIsFetching } from "@tanstack/react-query";
-import { useInstallPrompt } from "@/hooks/useInstallPrompt";
+import { useEditMode } from "@/contexts/EditModeContext";
+import { useDock } from "@/contexts/DockContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import AnatLogo from "@/components/AnatLogo";
 import QuickSearch from "@/components/QuickSearch";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export const APP_NAME = "ART-AI גלריה";
 export const DEV_CHAT_URL = "https://claude.ai/code/session_01S9BWDcyE3q4wF5HXv6WniZ";
 
 const chip = "arch-btn shrink-0";
+
+interface MenuElement extends HTMLElement {
+  items: { label: string; hint?: string; pressed?: boolean; onSelect: () => unknown }[];
+  status: string;
+}
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace JSX {
+    interface IntrinsicElements {
+      "ai-menu": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { chat?: string; research?: string };
+    }
+  }
+}
 
 const NAV = [
   { to: "/", label: "גלריות" },
@@ -23,7 +37,9 @@ const NAV = [
 ];
 
 const AppHeader = () => {
-  const { canInstall, install } = useInstallPrompt();
+  const { isEditMode, toggleEditMode } = useEditMode();
+  const { actions: dockActions } = useDock();
+  const menuRef = useRef<MenuElement>(null);
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const fetching = useIsFetching();
@@ -37,20 +53,17 @@ const AppHeader = () => {
 
   const isActive = (to: string) => (to === "/" ? location.pathname === "/" || location.pathname.startsWith("/gallery") : location.pathname.startsWith(to));
 
-  const copyLink = async () => {
-    const url = window.location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = url;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
-    }
-    toast.success("הקישור הועתק");
-  };
+  // A&I logo button (https://appofapp-gh.vercel.app/ai-menu.js): copy link, dev chat and install come from it;
+  // the edit mode switch and the actions the current page registers (useDockActions) are its items.
+  useEffect(() => {
+    const el = menuRef.current;
+    if (!el) return;
+    el.items = [
+      { label: isEditMode ? "סיום עריכה" : "מצב עריכה", hint: "CTRL E", pressed: isEditMode, onSelect: toggleEditMode },
+      ...(isEditMode ? dockActions.map((a) => ({ label: a.label, onSelect: a.onClick })) : []),
+    ];
+    el.status = isEditMode ? "מצב עריכה" : "";
+  }, [isEditMode, toggleEditMode, dockActions]);
 
   const primary = useMemo(
     () => (
@@ -65,20 +78,6 @@ const AppHeader = () => {
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [theme],
-  );
-
-  const actions = useMemo(
-    () => (
-      <>
-        <button type="button" onClick={copyLink} className={chip}>העתקת קישור</button>
-        <a href={DEV_CHAT_URL} target="_blank" rel="noreferrer" className={chip}>שיחת הפיתוח</a>
-        {canInstall && (
-          <button type="button" onClick={install} className={cn(chip, "arch-btn-ink")}>התקנת האפליקציה</button>
-        )}
-      </>
-    ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [theme, canInstall],
   );
 
   return (
@@ -119,11 +118,10 @@ const AppHeader = () => {
 
           <div className="flex min-w-0 items-center gap-2">
             <div className="hidden items-center gap-2 md:flex">{primary}</div>
-            <div className="hidden items-center gap-2 xl:flex">{actions}</div>
 
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild>
-                <button type="button" className={cn(chip, "xl:hidden")} aria-label="תפריט">תפריט</button>
+                <button type="button" className={cn(chip, "lg:hidden")} aria-label="תפריט">תפריט</button>
               </SheetTrigger>
               <SheetContent side="right" className="border-border bg-card" dir="rtl">
                 <SheetTitle className="font-mono text-xs font-normal text-muted-foreground">תפריט</SheetTitle>
@@ -143,10 +141,11 @@ const AppHeader = () => {
                       </Link>
                     </SheetClose>
                   ))}
-                  <div className="mt-6 flex flex-wrap gap-2"><span className="contents md:hidden">{primary}</span>{actions}</div>
+                  <div className="mt-6 flex flex-wrap gap-2 md:hidden">{primary}</div>
                 </nav>
               </SheetContent>
             </Sheet>
+            <ai-menu ref={menuRef} chat={DEV_CHAT_URL} />
           </div>
         </div>
 
