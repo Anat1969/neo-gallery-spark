@@ -284,3 +284,6 @@
   opacity: 0.55;
 }
 }
+
+/* A&I logo button (ai-menu): straight corners like every button here. */
+ai-menu::part(button) { border-radius: var(--radius); }

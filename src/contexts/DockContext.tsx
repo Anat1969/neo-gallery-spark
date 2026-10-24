@@ -19,7 +19,7 @@ export const DockProvider = ({ children }: { children: ReactNode }) => {
 
 export const useDock = () => useContext(DockContext);
 
-/** A page registers its edit actions here; they all appear together in the floating edit dock. */
+/** A page registers its edit actions here; they appear in the A&I logo button (ai-menu) while edit mode is on. */
 export const useDockActions = (actions: DockAction[], deps: unknown[]) => {
   const { setActions } = useContext(DockContext);
   useEffect(() => {
