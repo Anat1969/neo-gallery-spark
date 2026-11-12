@@ -45,6 +45,7 @@ import ScreeningMode from "@/components/media/ScreeningMode";
 import { useArtworkUploader } from "@/hooks/useArtworkUploader";
 import { useDockActions } from "@/contexts/DockContext";
 import { MEDIA_LABEL, thumbUrl, uploadImage, type MediaType } from "@/lib/media";
+import { CreateName, CreateTile, ImageWell, imageFrom, usePasteFiles } from "@/components/create/InlineCreate";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 
 const slugify = (text: string) =>
@@ -203,6 +204,34 @@ const GalleryRoom = () => {
 
   const nextOrder = (artworks as any[]).length > 0 ? Math.max(...(artworks as any[]).map((a) => a.sort_order)) + 1 : 0;
   const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: null, nextOrder, onDone: refresh });
+  // Ctrl+V anywhere on the gallery page adds the pasted files as works
+  usePasteFiles((files) => uploader.upload(files), !!gallery);
+
+  // New room, created in place at the end of the rooms row
+  const [nr, setNr] = useState<{ name: string; file: File | null }>({ name: "", file: null });
+  const [nrBusy, setNrBusy] = useState(false);
+  const createRoom = async (close: () => void) => {
+    const name = nr.name.trim();
+    if (!gallery || !name) return toast({ title: "צריך שם לחדר", variant: "destructive" });
+    setNrBusy(true);
+    try {
+      const cover_image = nr.file ? await uploadImage(nr.file, "room-covers") : "";
+      const taken = new Set((rooms as any[]).map((r) => r.slug));
+      let roomSlug = slugify(name) || "room";
+      for (let i = 2; taken.has(roomSlug); i++) roomSlug = `${slugify(name) || "room"}-${i}`;
+      const order = (rooms as any[]).length > 0 ? Math.max(...(rooms as any[]).map((r) => r.sort_order)) + 1 : 0;
+      const { error } = await supabase.from("neo_rooms" as any).insert({ gallery_id: gallery.id, name, slug: roomSlug, description: "", cover_image, sort_order: order });
+      if (error) throw error;
+      toast({ title: `החדר "${name}" נוצר` });
+      setNr({ name: "", file: null });
+      close();
+      refreshRooms();
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message, variant: "destructive" });
+    } finally {
+      setNrBusy(false);
+    }
+  };
 
   const mediaCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -416,13 +445,11 @@ const GalleryRoom = () => {
       )}
 
       {/* Rooms */}
-      {!isLoading && gallery && ((rooms as any[]).length > 0 || isEditMode) && (
+      {!isLoading && gallery && (
         <section className="mb-12">
           <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-muted-foreground">חדרים</h2>
-          {(rooms as any[]).length === 0 ? (
-            <p className="text-sm text-muted-foreground">אין עדיין חדרים. "חדר חדש" נמצא בפס העריכה.</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {(
+            <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-4 sm:grid-cols-[repeat(3,minmax(0,1fr))] lg:grid-cols-[repeat(4,minmax(0,1fr))]">
               {displayRooms.map((room: any, i: number) => (
                 <motion.div
                   key={room.id}
@@ -435,12 +462,12 @@ const GalleryRoom = () => {
                 >
                   <div
                     className="relative aspect-[4/3] overflow-hidden bg-secondary"
-                    onDragOver={(e) => { if (isEditMode) { e.preventDefault(); e.stopPropagation(); } }}
+                    onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
                     onDrop={(e) => {
-                      if (!isEditMode) return;
+                      const file = imageFrom(e.dataTransfer.files);
+                      if (!file) return;
                       e.preventDefault(); e.stopPropagation();
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) uploadRoomCover(room.id, file);
+                      uploadRoomCover(room.id, file);
                     }}
                   >
                     {roomCoverUploadingId === room.id && (
@@ -449,7 +476,7 @@ const GalleryRoom = () => {
                     {room.cover_image ? (
                       <img src={thumbUrl(room.cover_image, 640)} alt={room.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">{isEditMode ? "גררי לכאן תמונת חדר" : "אין תמונה"}</div>
+                      <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">גררי לכאן תמונת חדר</div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                     <span className="absolute bottom-3 right-3 text-lg font-light text-white">{room.name}</span>
@@ -462,6 +489,26 @@ const GalleryRoom = () => {
                   )}
                 </motion.div>
               ))}
+              <CreateTile
+                title="חדר חדש"
+                busy={nrBusy}
+                className="aspect-[4/3]"
+                openClassName="col-span-2 aspect-auto sm:col-span-1"
+                idle={<><span className="text-3xl font-extralight">+</span><span className="font-mono text-[11px] tracking-[0.15em]">חדר חדש</span></>}
+                onPasteImage={(f) => setNr((p) => ({ ...p, file: f }))}
+                onSubmit={(close) => createRoom(close)}
+              >
+                {(close) => (
+                  <>
+                    <ImageWell file={nr.file} onFile={(f) => setNr((p) => ({ ...p, file: f }))} label="תמונת החדר" className="aspect-[16/9] w-full" />
+                    <CreateName value={nr.name} onChange={(v) => setNr((p) => ({ ...p, name: v }))} placeholder="שם החדר" />
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={nrBusy} className="arch-btn arch-btn-ink flex-1">{nrBusy ? "שומרת..." : "יצירת החדר"}</button>
+                      <button type="button" onClick={close} className="arch-btn arch-btn-quiet">ביטול</button>
+                    </div>
+                  </>
+                )}
+              </CreateTile>
             </div>
           )}
         </section>
@@ -473,9 +520,7 @@ const GalleryRoom = () => {
           {(rooms as any[]).length > 0 && (
             <h2 className="mb-4 font-mono text-xs tracking-[0.2em] text-muted-foreground">יצירות ללא חדר</h2>
           )}
-          {(artworks as any[]).length === 0 && !isEditMode ? (
-            <p className="py-16 text-center text-lg text-muted-foreground">הגלריה ריקה. במצב עריכה אפשר לגרור לכאן קבצים.</p>
-          ) : (
+          {(
             <ArtworkWall
               artworks={displayArtworks as WallArtwork[]}
               editing={isEditMode}

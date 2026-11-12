@@ -60,7 +60,7 @@ const FavoritesBoard = () => {
       ) : works.length === 0 ? (
         <p className="py-20 text-center text-muted-foreground">עדיין אין נבחרות. בכל יצירה יש "לנבחרות" בפינה.</p>
       ) : (
-        <ArtworkWall artworks={works} editing={false} actions={[]} onReorder={() => undefined} onUpload={() => undefined} onReplaceMedia={() => undefined} />
+        <ArtworkWall canUpload={false} artworks={works} editing={false} actions={[]} onReorder={() => undefined} onUpload={() => undefined} onReplaceMedia={() => undefined} />
       )}
 
       <AnimatePresence>{screening && <ScreeningMode artworks={works} title="נבחרות" onClose={() => setScreening(false)} />}</AnimatePresence>

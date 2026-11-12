@@ -25,6 +25,7 @@ import ArtworkWall, { type WallArtwork } from "@/components/media/ArtworkWall";
 import ScreeningMode from "@/components/media/ScreeningMode";
 import { useArtworkUploader } from "@/hooks/useArtworkUploader";
 import { useDockActions } from "@/contexts/DockContext";
+import { usePasteFiles } from "@/components/create/InlineCreate";
 
 const RoomPage = () => {
   const { gallerySlug, roomSlug } = useParams<{ gallerySlug: string; roomSlug: string }>();
@@ -158,6 +159,8 @@ const RoomPage = () => {
 
   const nextOrder = artworks.length > 0 ? Math.max(...artworks.map((a: any) => a.sort_order)) + 1 : 0;
   const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: room?.id, nextOrder, onDone: refresh });
+  // Ctrl+V anywhere on the room page adds the pasted files as works
+  usePasteFiles((files) => uploader.upload(files), !!room);
 
   const pickFiles = () => {
     const input = document.createElement("input");
@@ -238,9 +241,7 @@ const RoomPage = () => {
       )}
 
       {!isLoading && room && (
-        artworks.length === 0 && !isEditMode ? (
-          <p className="py-16 text-center text-lg text-muted-foreground">החדר ריק. במצב עריכה אפשר לגרור לכאן קבצים.</p>
-        ) : (
+        (
           <ArtworkWall
             artworks={artworks as WallArtwork[]}
             editing={isEditMode}

@@ -39,6 +39,8 @@ interface Props {
   onUpload: (files: File[]) => void;
   onReplaceMedia: (a: WallArtwork, file: File) => void;
   uploading?: { done: number; total: number } | null;
+  /** Show the always-available upload tile (drag, paste, click). */
+  canUpload?: boolean;
 }
 
 /** One framed work. Tilts toward the pointer with a moving sheen, as if lit from the viewer's side. */
@@ -162,7 +164,7 @@ const Tile = ({
  * The salon wall: works hang in their own proportions in staggered columns, rise into view
  * as you scroll, and tilt under the pointer. In edit mode the same wall accepts drops of any file.
  */
-const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplaceMedia, uploading }: Props) => {
+const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplaceMedia, uploading, canUpload = true }: Props) => {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [over, setOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -178,7 +180,7 @@ const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplac
 
   return (
     <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 2xl:columns-4">
-      {editing && (
+      {canUpload && (
         <div
           role="button"
           tabIndex={0}
@@ -209,7 +211,7 @@ const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplac
             </>
           ) : (
             <>
-              <span className="text-sm">גררי לכאן קבצים, או לחצי לבחירה</span>
+              <span className="text-sm">גררי לכאן קבצים, הדביקי (Ctrl+V) או לחצי לבחירה</span>
               <span className="font-mono text-[11px]">תמונה · וידאו · PDF · תלת־ממד · שמע · כל קובץ</span>
             </>
           )}

@@ -45,7 +45,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import LatestStrip, { type StripWork } from "@/components/LatestStrip";
-import { thumbUrl } from "@/lib/media";
+import { thumbUrl, uploadImage } from "@/lib/media";
+import { CreateName, CreateTile, ImageWell, imageFrom } from "@/components/create/InlineCreate";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 import { useDockActions } from "@/contexts/DockContext";
 
@@ -63,8 +64,9 @@ interface GalleryItem {
 }
 
 /** A gallery as a stack of prints: on hover it flips through its latest works. */
-const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index }: {
+const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCover }: {
   gallery: GalleryItem;
+  onCover: (f: File) => Promise<void>;
   onOpen: () => void;
   onPrefetch: () => void;
   menu: React.ReactNode;
@@ -74,6 +76,7 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index }: {
   const frames = useMemo(() => [gallery.cover_image, ...gallery.previews].filter(Boolean).slice(0, 5), [gallery]);
   const [frame, setFrame] = useState(0);
   const [hover, setHover] = useState(false);
+  const [dropping, setDropping] = useState<"over" | "saving" | null>(null);
 
   useEffect(() => {
     if (!hover || frames.length < 2) {
@@ -93,6 +96,16 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index }: {
       className="group relative"
       onPointerEnter={() => { setHover(true); onPrefetch(); }}
       onPointerLeave={() => setHover(false)}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDropping("over"); } }}
+      onDragLeave={() => setDropping((d) => (d === "over" ? null : d))}
+      onDrop={async (e) => {
+        const f = imageFrom(e.dataTransfer.files);
+        if (!f) return setDropping(null);
+        e.preventDefault();
+        setDropping("saving");
+        await onCover(f);
+        setDropping(null);
+      }}
     >
       {/* Stacked prints behind the card give it physical depth */}
       <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 rotate-[1.2deg] rounded-md border border-border/50 bg-card/60 transition-transform duration-500 group-hover:translate-x-3 group-hover:translate-y-2 group-hover:rotate-[2.5deg]" />
@@ -105,6 +118,11 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index }: {
         className="relative cursor-pointer overflow-hidden rounded-md border border-border/70 bg-card text-right shadow-deep transition-transform duration-500 group-hover:-translate-y-1"
       >
         <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
+          {dropping && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 font-mono text-xs tracking-[0.12em] backdrop-blur">
+              {dropping === "saving" ? "שומרת תמונת כיסוי..." : "שחררי כאן להחלפת הכיסוי"}
+            </div>
+          )}
           {frames.length === 0 && <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">אין תמונה</div>}
           {frames.map((src, i) => (
             <img
@@ -225,6 +243,63 @@ const GalleryGrid = () => {
         : galleries.filter((g) => g.category === activeCategory),
     [activeCategory, galleries],
   );
+
+  // ── Create in place: category chip, gallery tile, cover by drop ──
+  const [newCat, setNewCat] = useState("");
+  const [catOpen, setCatOpen] = useState(false);
+  const [ng, setNg] = useState<{ name: string; category: string; file: File | null }>({ name: "", category: "", file: null });
+  const [creating, setCreating] = useState(false);
+
+  const createCategory = async () => {
+    const name = newCat.trim();
+    if (!name) return setCatOpen(false);
+    const max = Math.max(-1, ...categories.map((c) => c.sort_order ?? 0));
+    const { error } = await supabase.from("neo_categories").insert({ name, sort_order: max + 1 });
+    if (error) return toast({ title: "שגיאה", description: friendlyDbError(error), variant: "destructive" });
+    toast({ title: `הקטגוריה "${name}" נוספה` });
+    setNewCat("");
+    setCatOpen(false);
+    queryClient.invalidateQueries({ queryKey: ["categories"] });
+    setActiveCategory(name);
+  };
+
+  const createGallery = async (close: () => void) => {
+    const name = ng.name.trim();
+    const category = ng.category || (activeCategory !== "הכל" ? activeCategory : sortedCategories[0]?.name);
+    if (!name || !category) return toast({ title: "צריך שם וקטגוריה", variant: "destructive" });
+    const base = slugify(name);
+    if (!base) return toast({ title: "השם חייב להכיל אותיות או מספרים", variant: "destructive" });
+    setCreating(true);
+    try {
+      const cover_image = ng.file ? await uploadImage(ng.file, "covers") : "";
+      const max = Math.max(-1, ...galleries.map((g) => g.sort_order ?? 0));
+      const { error } = await supabase.from("neo_galleries").insert({
+        name, category, cover_image, description: "", sort_order: max + 1,
+        slug: uniqueSlug(base, new Set(galleries.map((g) => g.slug))),
+      });
+      if (error) throw error;
+      toast({ title: `הגלריה "${name}" נוצרה` });
+      setNg({ name: "", category: "", file: null });
+      close();
+      refresh();
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: friendlyDbError(e), variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const replaceCover = async (g: GalleryItem, f: File) => {
+    try {
+      const url = await uploadImage(f, "covers");
+      const { error } = await supabase.from("neo_galleries").update({ cover_image: url }).eq("id", g.id);
+      if (error) throw error;
+      toast({ title: `תמונת הכיסוי של "${g.name}" הוחלפה` });
+      refresh();
+    } catch (e: any) {
+      toast({ title: "שגיאה", description: e.message, variant: "destructive" });
+    }
+  };
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: ["galleries"] });
@@ -382,6 +457,29 @@ const GalleryGrid = () => {
               </div>
             );
           })}
+          {catOpen ? (
+            <form
+              data-own-paste
+              onSubmit={(e) => { e.preventDefault(); createCategory(); }}
+              className="flex h-9 items-stretch border border-foreground"
+            >
+              <input
+                autoFocus
+                value={newCat}
+                onChange={(e) => setNewCat(e.target.value)}
+                onKeyDown={(e) => e.key === "Escape" && setCatOpen(false)}
+                onBlur={() => !newCat.trim() && setCatOpen(false)}
+                placeholder="שם הקטגוריה"
+                aria-label="שם הקטגוריה החדשה"
+                className="w-40 bg-transparent px-3 text-sm outline-none"
+              />
+              <button type="submit" className="h-full min-h-0 bg-foreground px-3 font-mono text-[11px] text-background">שמירה</button>
+            </form>
+          ) : (
+            <button type="button" onClick={() => setCatOpen(true)} className="arch-btn h-9 border-dashed text-muted-foreground">
+              + קטגוריה
+            </button>
+          )}
         </div>
       </section>
 
@@ -412,18 +510,41 @@ const GalleryGrid = () => {
         </div>
       )}
 
-      {!isLoading && !isError && galleries.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 py-24">
-          <p className="text-center text-lg text-muted-foreground">עדיין אין גלריות. "גלריה חדשה" נמצא בפס העריכה למטה.</p>
-        </div>
-      )}
-
-      {!isLoading && !isError && galleries.length > 0 && (
+      {!isLoading && !isError && (
         <>
 
           <div className="grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+              <CreateTile
+                key="new-gallery"
+                title="גלריה חדשה"
+                busy={creating}
+                className="min-h-[260px]"
+                idle={<><span className="text-3xl font-extralight">+</span><span className="font-mono text-[11px] tracking-[0.15em]">גלריה חדשה</span><span className="text-xs">אפשר לגרור לכאן תמונת כיסוי</span></>}
+                onPasteImage={(f) => setNg((p) => ({ ...p, file: f }))}
+                onSubmit={(close) => createGallery(close)}
+              >
+                {(close) => (
+                  <div className="flex flex-col gap-3">
+                    <ImageWell file={ng.file} onFile={(f) => setNg((p) => ({ ...p, file: f }))} label="תמונת כיסוי" className="aspect-[4/3] w-full" />
+                    <CreateName value={ng.name} onChange={(v) => setNg((p) => ({ ...p, name: v }))} placeholder="שם הגלריה" />
+                    <select
+                      value={ng.category || (activeCategory !== "הכל" ? activeCategory : sortedCategories[0]?.name ?? "")}
+                      onChange={(e) => setNg((p) => ({ ...p, category: e.target.value }))}
+                      aria-label="קטגוריה"
+                      className="h-10 border border-foreground/30 bg-transparent px-2 text-sm"
+                    >
+                      {sortedCategories.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
+                    </select>
+                    <div className="flex gap-2">
+                      <button type="submit" disabled={creating} className="arch-btn arch-btn-ink flex-1">{creating ? "שומרת..." : "יצירת הגלריה"}</button>
+                      <button type="button" onClick={close} className="arch-btn arch-btn-quiet">ביטול</button>
+                    </div>
+                  </div>
+                )}
+              </CreateTile>
             {filtered.map((gallery, index) => (
               <GalleryCard
+                onCover={(f) => replaceCover(gallery, f)}
                 key={gallery.id}
                 gallery={gallery}
                 index={index}
