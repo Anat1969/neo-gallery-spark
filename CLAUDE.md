@@ -17,6 +17,8 @@
 - פרויקט ה-Supabase הישן בשם neo-gallery-spark (`slcpldoaaagkoozpbjsk`) החזיק נתונים של אפליקציות אחרות (ashdod_*, before_after_projects, tasks, captures, challenges, solutions, tipim_personal_tips, סכמת kadima ועוד) ו-181 קבצים ב-8 דליים. הכול הועתק ל-CULTURA-GH באותם שמות בדיוק (אין התנגשויות), כולל מדיניות RLS. ראו `docs/MIGRATION.md`.
 - אחרי ההגירה מותר למחוק את הפרויקט הישן, אחרי שכל אפליקציה שהשתמשה בו הועברה ל-CULTURA-GH.
 
+- **יצירה במקום, בשורה של הרשימה** (תיקון של ענת, 2026-11-12): קטגוריה חדשה היא שבב אחרון בשורת הקטגוריות, גלריה חדשה היא האריח הראשון בגריד, וחדר חדש הוא האריח האחרון בשורת החדרים. הכול זמין תמיד, בלי מצב עריכה. בכל אחד: שם, תמונה בגרירה, הדבקה או לחיצה, ושמירה ב-Enter (`src/components/create/InlineCreate.tsx`). גרירת תמונה על כרטיס גלריה או חדר מחליפה את הכיסוי. הדבקה (Ctrl+V) בכל מקום בדף גלריה או חדר מעלה את הקבצים כיצירות, ואריח ההעלאה בקיר מוצג תמיד.
+
 ## מהירות
 - תמונות תמיד דרך `thumbUrl()` ו-`srcSet()` מ-`src/lib/media.ts` (שינוי גודל של Supabase, WebP). לא להציג `image_url` מקורי בקיר או ברשימה.
 - React Query עם שמירת מטמון ב-localStorage (`PersistQueryClientProvider`), טעינה מוקדמת של גלריה במעבר עכבר (`src/lib/queries.ts`), דפים בטעינה עצלה, וחלוקת ספריות ב-`vite.config.ts`.
