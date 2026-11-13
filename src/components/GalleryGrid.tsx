@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import LatestStrip, { type StripWork } from "@/components/LatestStrip";
 import { thumbUrl, uploadImage } from "@/lib/media";
+import HomeDemo from "@/components/media/HomeDemo";
 import RotatingCover from "@/components/media/RotatingCover";
 import { CreateName, CreateTile, ImageWell, imageFrom } from "@/components/create/InlineCreate";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
@@ -452,7 +453,7 @@ const GalleryGrid = () => {
 
   return (
     <div className="min-h-screen px-4 py-8 md:px-8 lg:px-12" dir="rtl">
-      <section className="mb-12 mt-4">
+      <section className="mb-12 mt-4 grid items-end gap-8 lg:grid-cols-[1.618fr_1fr]">
         <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.2, 0.8, 0.2, 1] }}>
           <span className="font-mono text-[11px] tracking-[0.3em] text-muted-foreground">תיק עבודות</span>
           <h1 className="mt-2 max-w-4xl text-5xl font-extralight leading-[1.05] tracking-tight md:text-7xl">
@@ -462,6 +463,9 @@ const GalleryGrid = () => {
           <p className="mt-4 font-mono text-[11px] text-muted-foreground">
             {galleries.length} גלריות · {galleries.reduce((n, g) => n + g.artworkCount, 0)} עבודות
           </p>
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.15, ease: [0.2, 0.8, 0.2, 1] }}>
+          <HomeDemo />
         </motion.div>
       </section>
       {home?.latest && home.latest.length > 0 && <LatestStrip works={home.latest} />}
