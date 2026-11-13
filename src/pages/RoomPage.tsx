@@ -26,6 +26,7 @@ import ScreeningMode from "@/components/media/ScreeningMode";
 import { useArtworkUploader } from "@/hooks/useArtworkUploader";
 import { useDockActions } from "@/contexts/DockContext";
 import { usePasteFiles } from "@/components/create/InlineCreate";
+import { saveOrder } from "@/lib/order";
 
 const RoomPage = () => {
   const { gallerySlug, roomSlug } = useParams<{ gallerySlug: string; roomSlug: string }>();
@@ -93,7 +94,8 @@ const RoomPage = () => {
 
   const handleAddInline = async () => {
     if (!gallery || !room) return;
-    const nextOrder = artworks.length > 0 ? Math.max(...artworks.map((a: any) => a.sort_order)) + 1 : 0;
+    // New uploads open the wall: they take the places before the first work
+  const nextOrder = artworks.length > 0 ? Math.min(...artworks.map((a: any) => a.sort_order ?? 0)) - 1000 : 0;
     const { error } = await supabase
       .from("neo_artworks")
       .insert({ title: "יצירה חדשה", gallery_id: gallery.id, room_id: room.id, sort_order: nextOrder } as any)
@@ -152,12 +154,14 @@ const RoomPage = () => {
   };
 
   const handleReorder = async (reordered: WallArtwork[]) => {
-    queryClient.setQueryData(["room-artworks", room?.id], reordered);
-    await Promise.all(reordered.map((a, i) => supabase.from("neo_artworks").update({ sort_order: i }).eq("id", a.id)));
+    queryClient.setQueryData(["room-artworks", room?.id], reordered.map((a, i) => ({ ...a, sort_order: i })));
+    const err = await saveOrder("neo_artworks", reordered);
+    if (err) toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     refresh();
   };
 
-  const nextOrder = artworks.length > 0 ? Math.max(...artworks.map((a: any) => a.sort_order)) + 1 : 0;
+  // New uploads open the wall: they take the places before the first work
+  const nextOrder = artworks.length > 0 ? Math.min(...artworks.map((a: any) => a.sort_order ?? 0)) - 1000 : 0;
   const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: room?.id, nextOrder, onDone: refresh });
   // Ctrl+V anywhere on the room page adds the pasted files as works
   usePasteFiles((files) => uploader.upload(files), !!room);

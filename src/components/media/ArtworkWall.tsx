@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { displayTitle } from "@/lib/title";
+import { getDragItem, isItemDrag, setDragItem } from "@/lib/order";
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
@@ -53,6 +55,8 @@ const Tile = ({
   onDragStart,
   onDropOn,
   onReplaceMedia,
+  onUploadFiles,
+  onDragEnd,
 }: {
   artwork: WallArtwork;
   index: number;
@@ -60,8 +64,10 @@ const Tile = ({
   actions: TileAction[];
   dragging: boolean;
   onDragStart: () => void;
-  onDropOn: () => void;
+  onDropOn: (draggedId: string) => void;
   onReplaceMedia: (file: File) => void;
+  onUploadFiles: (files: File[]) => void;
+  onDragEnd: () => void;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState(false);
@@ -73,29 +79,48 @@ const Tile = ({
   const { isFavorite, toggle } = useFavorites();
   const fav = isFavorite(artwork.id);
   const ratio = artwork.width && artwork.height ? artwork.width / artwork.height : null;
+  const [target, setTarget] = useState(false);
 
   return (
     <motion.div
       ref={ref}
-      layout={editing ? "position" : false}
+      layout="position"
       initial={{ opacity: 0, y: 28 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "120px" }}
       transition={{ duration: 0.6, delay: (index % 6) * 0.05, ease: [0.2, 0.8, 0.2, 1] }}
-      className={cn("group mb-5 break-inside-avoid [perspective:1000px]", dragging && "opacity-40")}
-      draggable={editing}
-      onDragStart={onDragStart}
-      onDragOver={(e) => editing && e.preventDefault()}
+      className={cn("group relative mb-5 break-inside-avoid [perspective:1000px]", dragging && "opacity-30")}
+      // Any frame can be dragged onto another frame to take its place; the order is saved at once
+      draggable
+      onDragStart={(e) => { setDragItem(e as unknown as React.DragEvent, "artwork", artwork.id); onDragStart(); }}
+      onDragEnd={() => { setTarget(false); onDragEnd(); }}
+      onDragOver={(e) => {
+        if (isItemDrag(e as unknown as React.DragEvent) || e.dataTransfer.types.includes("Files")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          if (!target && !dragging) setTarget(true);
+        }
+      }}
+      onDragLeave={() => setTarget(false)}
       onDrop={(e) => {
-        if (!editing) return;
         e.preventDefault();
-        const file = e.dataTransfer.files?.[0];
-        if (file) onReplaceMedia(file);
-        else onDropOn();
+        setTarget(false);
+        const item = getDragItem(e as unknown as React.DragEvent);
+        if (item?.kind === "artwork") return onDropOn(item.id);
+        const files = Array.from(e.dataTransfer.files ?? []);
+        if (!files.length) return;
+        // A file dropped on a frame: in edit mode it replaces that work's file, otherwise it becomes a new work
+        if (editing) onReplaceMedia(files[0]);
+        else onUploadFiles(files);
       }}
     >
+      {target && (
+        <div className="pointer-events-none absolute -inset-1.5 z-10 border-2 border-foreground">
+          <span className="absolute -top-3 right-3 bg-foreground px-2 py-0.5 font-mono text-[10px] tracking-[0.12em] text-background">מקום חדש</span>
+        </div>
+      )}
       <motion.div
-        style={{ rotateX: editing ? 0 : rx, rotateY: editing ? 0 : ry, transformStyle: "preserve-3d" }}
+        style={{ rotateX: editing || dragging ? 0 : rx, rotateY: editing || dragging ? 0 : ry, transformStyle: "preserve-3d" }}
         onPointerMove={(e) => {
           const r = ref.current?.getBoundingClientRect();
           if (!r) return;
@@ -110,11 +135,11 @@ const Tile = ({
         }}
         className="relative overflow-hidden border border-border/60 bg-card shadow-deep transition-shadow duration-500 group-hover:shadow-[0_40px_80px_-30px_hsl(var(--shadow-deep))]"
       >
-        <Link to={`/artwork/${artwork.id}`} className="block" draggable={false} aria-label={artwork.title}>
+        <Link to={`/artwork/${artwork.id}`} className="block" draggable={false} aria-label={displayTitle(artwork.title) || "פתיחת היצירה"}>
           <MediaThumb item={artwork} natural ratio={ratio} active={hover} />
           <motion.div aria-hidden className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: sheen }} />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-2 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-4 pt-10 opacity-0 transition-all duration-500 group-hover:translate-y-0 group-hover:opacity-100">
-            <h3 className="text-base font-light text-white">{artwork.title}</h3>
+            {displayTitle(artwork.title) && <h3 className="text-base font-light text-white">{displayTitle(artwork.title)}</h3>}
             {artwork.topic && <p className="mt-0.5 line-clamp-1 font-mono text-[11px] text-white/70">{artwork.topic}</p>}
           </div>
         </Link>
@@ -135,7 +160,7 @@ const Tile = ({
           {editing && (
             <DropdownMenu dir="rtl">
               <DropdownMenuTrigger asChild>
-                <button type="button" className="h-7 min-h-0 border border-foreground/20 bg-background/85 px-2 font-mono text-[10px] tracking-[0.1em] text-foreground backdrop-blur hover:bg-foreground hover:text-background" aria-label={`פעולות על ${artwork.title}`}>
+                <button type="button" className="h-7 min-h-0 border border-foreground/20 bg-background/85 px-2 font-mono text-[10px] tracking-[0.1em] text-foreground backdrop-blur hover:bg-foreground hover:text-background" aria-label={`פעולות על ${displayTitle(artwork.title) || "היצירה"}`}>
                   פעולות
                 </button>
               </DropdownMenuTrigger>
@@ -152,9 +177,7 @@ const Tile = ({
             </DropdownMenu>
           )}
         </div>
-        {editing && (
-          <span className="absolute left-2 top-2 z-[3] cursor-grab border border-foreground/20 bg-background/85 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur">גרירה</span>
-        )}
+        <span aria-hidden className="pointer-events-none absolute left-2 top-2 z-[3] border border-foreground/20 bg-background/85 px-2 py-1 font-mono text-[10px] text-muted-foreground opacity-0 backdrop-blur transition-opacity group-hover:opacity-100">גרירה להזזה</span>
       </motion.div>
     </motion.div>
   );
@@ -169,12 +192,13 @@ const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplac
   const [over, setOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const drop = (target: number) => {
-    if (dragIdx === null || dragIdx === target) return setDragIdx(null);
-    const next = [...artworks];
-    const [moved] = next.splice(dragIdx, 1);
-    next.splice(target, 0, moved);
+  const drop = (draggedId: string, target: number) => {
+    const from = artworks.findIndex((a) => a.id === draggedId);
     setDragIdx(null);
+    if (from < 0 || from === target) return;
+    const next = [...artworks];
+    const [moved] = next.splice(from, 1);
+    next.splice(target, 0, moved);
     onReorder(next);
   };
 
@@ -238,7 +262,9 @@ const ArtworkWall = ({ artworks, editing, actions, onReorder, onUpload, onReplac
           actions={actions}
           dragging={dragIdx === i}
           onDragStart={() => setDragIdx(i)}
-          onDropOn={() => drop(i)}
+          onDragEnd={() => setDragIdx(null)}
+          onDropOn={(id) => drop(id, i)}
+          onUploadFiles={onUpload}
           onReplaceMedia={(file) => onReplaceMedia(a, file)}
         />
       ))}

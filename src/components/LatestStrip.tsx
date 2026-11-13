@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { displayTitle } from "@/lib/title";
 import { thumbUrl } from "@/lib/media";
 
 export interface StripWork {
@@ -25,7 +26,7 @@ const LatestStrip = ({ works }: { works: StripWork[] }) => {
             key={w.id + i}
             to={`/artwork/${w.id}`}
             className="group relative h-40 shrink-0 overflow-hidden rounded-sm bg-secondary shadow-deep md:h-56"
-            aria-label={w.title}
+            aria-label={displayTitle(w.title) || "פתיחת היצירה"}
             tabIndex={i >= works.length ? -1 : 0}
           >
             <img
@@ -37,7 +38,7 @@ const LatestStrip = ({ works }: { works: StripWork[] }) => {
               style={{ minWidth: "8rem" }}
             />
             <span dir="rtl" className="absolute inset-x-0 bottom-0 translate-y-full bg-gradient-to-t from-black/80 to-transparent p-3 pt-8 text-sm font-light text-white transition-transform duration-500 group-hover:translate-y-0">
-              {w.title}
+              {displayTitle(w.title)}
             </span>
           </Link>
         ))}

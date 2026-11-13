@@ -49,6 +49,7 @@ import { thumbUrl, uploadImage } from "@/lib/media";
 import { CreateName, CreateTile, ImageWell, imageFrom } from "@/components/create/InlineCreate";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 import { useDockActions } from "@/contexts/DockContext";
+import { bySortOrder, getDragItem, isItemDrag, moveItem, saveOrder, setDragItem } from "@/lib/order";
 
 interface GalleryItem {
   id: string;
@@ -64,8 +65,9 @@ interface GalleryItem {
 }
 
 /** A gallery as a stack of prints: on hover it flips through its latest works. */
-const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCover }: {
+const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCover, onDropGallery }: {
   gallery: GalleryItem;
+  onDropGallery: (draggedId: string) => void;
   onCover: (f: File) => Promise<void>;
   onOpen: () => void;
   onPrefetch: () => void;
@@ -77,6 +79,7 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
   const [frame, setFrame] = useState(0);
   const [hover, setHover] = useState(false);
   const [dropping, setDropping] = useState<"over" | "saving" | null>(null);
+  const [target, setTarget] = useState(false);
 
   useEffect(() => {
     if (!hover || frames.length < 2) {
@@ -96,9 +99,17 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
       className="group relative"
       onPointerEnter={() => { setHover(true); onPrefetch(); }}
       onPointerLeave={() => setHover(false)}
-      onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDropping("over"); } }}
-      onDragLeave={() => setDropping((d) => (d === "over" ? null : d))}
+      draggable
+      onDragStart={(e) => setDragItem(e as unknown as React.DragEvent, "gallery", gallery.id)}
+      onDragEnd={() => setTarget(false)}
+      onDragOver={(e) => {
+        if (isItemDrag(e as unknown as React.DragEvent)) { e.preventDefault(); if (!target) setTarget(true); return; }
+        if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDropping("over"); }
+      }}
+      onDragLeave={() => { setTarget(false); setDropping((d) => (d === "over" ? null : d)); }}
       onDrop={async (e) => {
+        const item = getDragItem(e as unknown as React.DragEvent);
+        if (item) { e.preventDefault(); setTarget(false); if (item.kind === "gallery" && item.id !== gallery.id) onDropGallery(item.id); return; }
         const f = imageFrom(e.dataTransfer.files);
         if (!f) return setDropping(null);
         e.preventDefault();
@@ -107,6 +118,11 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
         setDropping(null);
       }}
     >
+      {target && (
+        <div className="pointer-events-none absolute -inset-2 z-20 border-2 border-foreground">
+          <span className="absolute -top-3 right-3 bg-foreground px-2 py-0.5 font-mono text-[10px] tracking-[0.12em] text-background">מקום חדש</span>
+        </div>
+      )}
       {/* Stacked prints behind the card give it physical depth */}
       <div aria-hidden className="absolute inset-0 translate-x-1.5 translate-y-1.5 rotate-[1.2deg] rounded-md border border-border/50 bg-card/60 transition-transform duration-500 group-hover:translate-x-3 group-hover:translate-y-2 group-hover:rotate-[2.5deg]" />
       <div aria-hidden className="absolute inset-0 -translate-x-1 translate-y-1 -rotate-[1deg] rounded-md border border-border/40 bg-card/40 transition-transform duration-500 group-hover:-translate-x-2.5 group-hover:-rotate-[2deg]" />
@@ -131,6 +147,7 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
               srcSet={`${thumbUrl(src, 400)} 400w, ${thumbUrl(src, 640)} 640w, ${thumbUrl(src, 960)} 960w`}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               alt={i === 0 ? gallery.name : ""}
+              draggable={false}
               loading={index < 4 && i === 0 ? "eager" : "lazy"}
               decoding="async"
               className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 ${i === frame ? "scale-105 opacity-100" : "scale-100 opacity-0"}`}
@@ -212,7 +229,7 @@ const GalleryGrid = () => {
           lastActivity: latestByGallery.get(g.id) ?? g.updated_at ?? "",
           previews: previews.get(g.id) ?? [],
         }))
-        .sort((a: any, b: any) => (b.lastActivity || "").localeCompare(a.lastActivity || "")) as GalleryItem[];
+        .sort(bySortOrder) as GalleryItem[];
       const latest = (activity ?? []).filter((a) => a.image_url).slice(0, 18) as StripWork[];
       return { galleries, latest };
     },
@@ -225,16 +242,42 @@ const GalleryGrid = () => {
   };
 
   // Categories ordered by most recent artwork activity (newest first)
-  const sortedCategories = useMemo(() => {
-    const latestByCat = new Map<string, string>();
-    galleries.forEach((g) => {
-      const cur = latestByCat.get(g.category) ?? "";
-      if ((g.lastActivity ?? "") > cur) latestByCat.set(g.category, g.lastActivity ?? "");
-    });
-    return [...categories].sort((a, b) =>
-      (latestByCat.get(b.name) ?? "").localeCompare(latestByCat.get(a.name) ?? ""),
-    );
-  }, [categories, galleries]);
+  // Lists keep the order set by dragging
+  const sortedCategories = useMemo(() => [...categories].sort(bySortOrder), [categories]);
+
+  // Drag a gallery onto a gallery: it takes that place. Onto a category chip: it moves to that category.
+  const [chipTarget, setChipTarget] = useState<string | null>(null);
+  const reorderGallery = async (draggedId: string, targetId: string) => {
+    const from = galleries.findIndex((g) => g.id === draggedId), to = galleries.findIndex((g) => g.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = moveItem(galleries, from, to).map((g, i) => ({ ...g, sort_order: i }));
+    queryClient.setQueryData(["galleries"], (old: any) => (old ? { ...old, galleries: next } : old));
+    const err = await saveOrder("neo_galleries", moveItem(galleries, from, to));
+    if (err) toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+    refresh();
+  };
+  const dropOnChip = async (e: React.DragEvent, cat: string) => {
+    e.preventDefault();
+    setChipTarget(null);
+    const item = getDragItem(e);
+    if (!item) return;
+    if (item.kind === "gallery" && cat !== "הכל") {
+      const g = galleries.find((x) => x.id === item.id);
+      if (!g || g.category === cat) return;
+      const { error } = await supabase.from("neo_galleries").update({ category: cat }).eq("id", g.id);
+      if (error) return toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: `"${g.name}" עברה לקטגוריה ${cat}` });
+      refresh();
+    } else if (item.kind === "category" && cat !== "הכל") {
+      const from = sortedCategories.findIndex((c) => c.id === item.id), to = sortedCategories.findIndex((c) => c.name === cat);
+      if (from < 0 || to < 0 || from === to) return;
+      const next = moveItem(sortedCategories, from, to);
+      queryClient.setQueryData(["categories"], next.map((c, i) => ({ ...c, sort_order: i })));
+      const err = await saveOrder("neo_categories", next);
+      if (err) toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["categories"] });
+    }
+  };
 
   const filtered = useMemo(
     () =>
@@ -434,7 +477,12 @@ const GalleryGrid = () => {
                 role="button"
                 onClick={() => setActiveCategory(cat)}
                 aria-pressed={activeCategory === cat}
-                className="arch-btn h-9 cursor-pointer gap-2"
+                draggable={!!catObj}
+                onDragStart={(e) => catObj && setDragItem(e as unknown as React.DragEvent, "category", catObj.id)}
+                onDragOver={(e) => { if (cat !== "הכל" && isItemDrag(e as unknown as React.DragEvent)) { e.preventDefault(); if (chipTarget !== cat) setChipTarget(cat); } }}
+                onDragLeave={() => setChipTarget(null)}
+                onDrop={(e) => dropOnChip(e as unknown as React.DragEvent, cat)}
+                className={`arch-btn h-9 cursor-pointer gap-2 ${chipTarget === cat ? "outline outline-2 outline-offset-4 outline-foreground" : ""}`}
               >
                 {catObj && isEditMode ? (
                   <InlineEdit
@@ -545,6 +593,7 @@ const GalleryGrid = () => {
             {filtered.map((gallery, index) => (
               <GalleryCard
                 onCover={(f) => replaceCover(gallery, f)}
+                onDropGallery={(id) => reorderGallery(id, gallery.id)}
                 key={gallery.id}
                 gallery={gallery}
                 index={index}

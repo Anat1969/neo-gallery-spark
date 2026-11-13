@@ -46,6 +46,8 @@ import { useArtworkUploader } from "@/hooks/useArtworkUploader";
 import { useDockActions } from "@/contexts/DockContext";
 import { MEDIA_LABEL, thumbUrl, uploadImage, type MediaType } from "@/lib/media";
 import { CreateName, CreateTile, ImageWell, imageFrom, usePasteFiles } from "@/components/create/InlineCreate";
+import { bySortOrder, getDragItem, isItemDrag, saveOrder, setDragItem } from "@/lib/order";
+import { displayTitle } from "@/lib/title";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 
 const slugify = (text: string) =>
@@ -126,21 +128,32 @@ const GalleryRoom = () => {
   const isLoading = galleryLoading || artworksLoading;
 
   // View mode: newest artworks first; edit mode keeps manual sort_order for drag
-  const displayArtworks = useMemo(
-    () =>
-      isEditMode
-        ? artworks
-        : [...(artworks as any[])].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")),
-    [artworks, isEditMode],
-  );
+  // Every list shows the order set by dragging
+  const displayArtworks = useMemo(() => [...(artworks as any[])].sort(bySortOrder), [artworks]);
+  const displayRooms = useMemo(() => [...(rooms as any[])].sort(bySortOrder), [rooms]);
 
-  const displayRooms = useMemo(
-    () =>
-      [...(rooms as any[])].sort((a, b) =>
-        (b.updated_at ?? b.created_at ?? "").localeCompare(a.updated_at ?? a.created_at ?? ""),
-      ),
-    [rooms],
-  );
+  // Drag a room onto a room to reorder; drag a work onto a room to move it inside
+  const [roomTarget, setRoomTarget] = useState<string | null>(null);
+  const dropOnRoom = async (e: React.DragEvent, target: any) => {
+    e.preventDefault();
+    setRoomTarget(null);
+    const item = getDragItem(e);
+    if (!item) return;
+    if (item.kind === "room" && item.id !== target.id) {
+      const list = displayRooms as any[];
+      const from = list.findIndex((r) => r.id === item.id), to = list.findIndex((r) => r.id === target.id);
+      const next = [...list]; const [m] = next.splice(from, 1); next.splice(to, 0, m);
+      queryClient.setQueryData(["rooms", gallery?.id], next.map((r, i) => ({ ...r, sort_order: i })));
+      const err = await saveOrder("neo_rooms", next);
+      if (err) toast({ title: "שגיאה", description: err.message, variant: "destructive" });
+      refreshRooms();
+    } else if (item.kind === "artwork") {
+      const { error } = await supabase.from("neo_artworks").update({ room_id: target.id } as any).eq("id", item.id);
+      if (error) return toast({ title: "שגיאה", description: error.message, variant: "destructive" });
+      toast({ title: `היצירה עברה לחדר "${target.name}"` });
+      refresh();
+    }
+  };
 
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["artworks", gallery?.id] });
@@ -194,15 +207,14 @@ const GalleryRoom = () => {
   };
 
   const handleReorder = async (reordered: WallArtwork[]) => {
-    queryClient.setQueryData(["artworks", gallery?.id], reordered);
-    const results = await Promise.all(reordered.map((a, i) => supabase.from("neo_artworks").update({ sort_order: i }).eq("id", a.id)));
-    const firstError = results.find((r) => r.error)?.error;
-    if (firstError) toast({ title: "שגיאה", description: firstError.message, variant: "destructive" });
-    else toast({ title: "סדר היצירות עודכן" });
+    queryClient.setQueryData(["artworks", gallery?.id], reordered.map((a, i) => ({ ...a, sort_order: i })));
+    const err = await saveOrder("neo_artworks", reordered);
+    if (err) toast({ title: "שגיאה", description: err.message, variant: "destructive" });
     refresh();
   };
 
-  const nextOrder = (artworks as any[]).length > 0 ? Math.max(...(artworks as any[]).map((a) => a.sort_order)) + 1 : 0;
+  // New uploads open the wall: they take the places before the first work
+  const nextOrder = (artworks as any[]).length > 0 ? Math.min(...(artworks as any[]).map((a) => a.sort_order ?? 0)) - 1000 : 0;
   const uploader = useArtworkUploader({ galleryId: gallery?.id, roomId: null, nextOrder, onDone: refresh });
   // Ctrl+V anywhere on the gallery page adds the pasted files as works
   usePasteFiles((files) => uploader.upload(files), !!gallery);
@@ -458,12 +470,18 @@ const GalleryRoom = () => {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.05 }}
                   onClick={() => navigate(`/gallery/${slug}/room/${room.slug}`)}
-                  className="group relative cursor-pointer overflow-hidden rounded-md border border-border/60 bg-card shadow-deep"
+                  draggable
+                  onDragStart={(e) => setDragItem(e as unknown as React.DragEvent, "room", room.id)}
+                  onDragOver={(e) => { if (isItemDrag(e as unknown as React.DragEvent)) { e.preventDefault(); if (roomTarget !== room.id) setRoomTarget(room.id); } }}
+                  onDragLeave={() => setRoomTarget(null)}
+                  onDrop={(e) => { if (isItemDrag(e as unknown as React.DragEvent)) dropOnRoom(e as unknown as React.DragEvent, room); }}
+                  className={`group relative cursor-pointer overflow-hidden rounded-md border bg-card shadow-deep ${roomTarget === room.id ? "border-2 border-foreground" : "border-border/60"}`}
                 >
                   <div
                     className="relative aspect-[4/3] overflow-hidden bg-secondary"
-                    onDragOver={(e) => { if (e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
+                    onDragOver={(e) => { if (!isItemDrag(e as unknown as React.DragEvent) && e.dataTransfer.types.includes("Files")) { e.preventDefault(); e.stopPropagation(); } }}
                     onDrop={(e) => {
+                      if (isItemDrag(e as unknown as React.DragEvent)) return; // a moved work or room: the card handles it
                       const file = imageFrom(e.dataTransfer.files);
                       if (!file) return;
                       e.preventDefault(); e.stopPropagation();
@@ -474,7 +492,7 @@ const GalleryRoom = () => {
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 font-mono text-xs">מעלה...</div>
                     )}
                     {room.cover_image ? (
-                      <img src={thumbUrl(room.cover_image, 640)} alt={room.name} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                      <img src={thumbUrl(room.cover_image, 640)} alt={room.name} draggable={false} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">גררי לכאן תמונת חדר</div>
                     )}
@@ -637,7 +655,7 @@ const GalleryRoom = () => {
             <DialogTitle>העברה לחדר</DialogTitle>
           </DialogHeader>
           <div className="py-2">
-            <Label className="mb-2 block">בחרי חדר עבור "{moveArtwork?.title}"</Label>
+            <Label className="mb-2 block">בחרי חדר עבור "{displayTitle(moveArtwork?.title) || "היצירה"}"</Label>
             <Select value={selectedRoomId} onValueChange={setSelectedRoomId}>
               <SelectTrigger>
                 <SelectValue placeholder="בחרי חדר..." />

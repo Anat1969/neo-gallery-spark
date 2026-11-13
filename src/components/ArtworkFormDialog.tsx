@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { displayTitle } from "@/lib/title";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,7 @@ const ArtworkFormDialog = ({
       const { title, ...m } = await uploadMedia(file);
       setMedia(m);
       if (m.image_url) set("image_url", m.image_url);
-      if (!form.title.trim()) set("title", title);
+      if (!form.title.trim() && title) set("title", title);
     } catch (e: any) {
       toast({ title: "שגיאה בהעלאה", description: e.message, variant: "destructive" });
     } finally {
@@ -107,7 +108,7 @@ const ArtworkFormDialog = ({
 
     if (artwork) {
       setForm({
-        title: artwork.title,
+        title: displayTitle(artwork.title),
         topic: artwork.topic,
         post: artwork.post,
         image_url: artwork.image_url,
@@ -143,10 +144,6 @@ const ArtworkFormDialog = ({
 
 
   const handleSave = async () => {
-    if (!form.title.trim()) {
-      toast({ title: "שגיאה", description: "שם היצירה הוא שדה חובה", variant: "destructive" });
-      return;
-    }
 
     if (!selectedGalleryId) {
       toast({ title: "שגיאה", description: "יש לבחור גלריה", variant: "destructive" });

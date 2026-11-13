@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { displayTitle } from "@/lib/title";
 import { AnimatePresence, motion } from "framer-motion";
 import { thumbUrl, MEDIA_LABEL, type MediaType } from "@/lib/media";
 import type { WallArtwork } from "./ArtworkWall";
@@ -89,7 +90,7 @@ const ScreeningMode = ({ artworks, title, onClose, start = 0 }: { artworks: Wall
               <img src={thumbUrl(current.image_url, 64, 40)} alt="" aria-hidden className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl" />
               <img
                 src={thumbUrl(current.image_url, 1920, 82)}
-                alt={current.title}
+                alt={displayTitle(current.title)}
                 className={`relative max-h-full max-w-full object-contain ${playing ? "ken-burns" : ""}`}
               />
             </>
@@ -101,7 +102,7 @@ const ScreeningMode = ({ artworks, title, onClose, start = 0 }: { artworks: Wall
 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-6 pt-24 md:p-10 md:pt-32">
         <motion.p key={"t" + current.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="text-2xl font-extralight md:text-4xl">
-          {current.title}
+          {displayTitle(current.title)}
         </motion.p>
         <p className="mt-2 font-mono text-xs text-white/60">
           {title} · {idx + 1} / {n}

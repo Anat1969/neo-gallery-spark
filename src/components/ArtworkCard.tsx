@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { displayTitle } from "@/lib/title";
 import { motion } from "framer-motion";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -111,7 +112,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
             crumbs={buildCrumbs({
               category: (artwork?.gallery as any)?.category,
               gallery: artwork?.gallery as any,
-              artworkTitle: artwork?.title ?? "...",
+              artworkTitle: displayTitle(artwork?.title) || (artwork ? "יצירה" : "..."),
             })}
           />
         )}
@@ -158,7 +159,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
           </div>
 
           <div className="mx-auto mt-6 max-w-3xl">
-            <h1 className="text-3xl font-extralight tracking-tight text-foreground md:text-5xl">{artwork.title}</h1>
+            {displayTitle(artwork.title) && <h1 className="text-3xl font-extralight tracking-tight text-foreground md:text-5xl">{displayTitle(artwork.title)}</h1>}
             <p className="mt-2 text-base text-muted-foreground">{artwork.topic}</p>
 
             {galleryMeta?.id && (
@@ -240,7 +241,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                 </Button>
 
                 <ShareExport
-                  title={artwork.title}
+                  title={displayTitle(artwork.title) || (artwork.gallery as any)?.name || "יצירה"}
                   topic={artwork.topic ?? ""}
                   post={artwork.post ?? ""}
                   tags={artwork.tags ?? []}

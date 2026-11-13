@@ -1,4 +1,5 @@
 import { supabase, STORAGE_BUCKET } from "@/integrations/supabase/client";
+import { titleFromFile } from "@/lib/title";
 
 export type MediaType = "image" | "video" | "pdf" | "model" | "audio" | "file";
 
@@ -132,6 +133,7 @@ export interface UploadedMedia {
   width?: number;
   height?: number;
   title: string;
+  source_name: string;
 }
 
 /** Upload any file Anat produces; creates a poster image for video and PDF so the wall stays visual. */
@@ -160,7 +162,8 @@ export async function uploadMedia(file: File): Promise<UploadedMedia> {
     file_size: file.size,
     width,
     height,
-    title: file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "יצירה חדשה",
+    title: titleFromFile(file.name),
+    source_name: file.name,
   };
 }
 
