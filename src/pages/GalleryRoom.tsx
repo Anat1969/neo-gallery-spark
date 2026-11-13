@@ -42,6 +42,7 @@ import ProjectMetaBar from "@/components/ProjectMetaBar";
 import ImageDropZone from "@/components/ImageDropZone";
 import ArtworkWall, { type WallArtwork } from "@/components/media/ArtworkWall";
 import ScreeningMode from "@/components/media/ScreeningMode";
+import RotatingCover from "@/components/media/RotatingCover";
 import { useArtworkUploader } from "@/hooks/useArtworkUploader";
 import { useDockActions } from "@/contexts/DockContext";
 import { MEDIA_LABEL, thumbUrl, uploadImage, type MediaType } from "@/lib/media";
@@ -131,6 +132,26 @@ const GalleryRoom = () => {
   // Every list shows the order set by dragging
   const displayArtworks = useMemo(() => [...(artworks as any[])].sort(bySortOrder), [artworks]);
   const displayRooms = useMemo(() => [...(rooms as any[])].sort(bySortOrder), [rooms]);
+
+  // Each room's cover rotates through the works inside it
+  const { data: roomImages = [] } = useQuery({
+    queryKey: ["room-images", gallery?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("neo_artworks")
+        .select("room_id, image_url")
+        .eq("gallery_id", gallery!.id)
+        .not("room_id", "is", null)
+        .neq("image_url", "")
+        .limit(600);
+      return data ?? [];
+    },
+    enabled: !!gallery?.id && (rooms as any[]).length > 0,
+  });
+  const roomPool = useCallback(
+    (room: any) => [room.cover_image, ...roomImages.filter((a: any) => a.room_id === room.id).map((a: any) => a.image_url)].filter(Boolean).slice(0, 16),
+    [roomImages],
+  );
 
   // Drag a room onto a room to reorder; drag a work onto a room to move it inside
   const [roomTarget, setRoomTarget] = useState<string | null>(null);
@@ -491,8 +512,8 @@ const GalleryRoom = () => {
                     {roomCoverUploadingId === room.id && (
                       <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/70 font-mono text-xs">מעלה...</div>
                     )}
-                    {room.cover_image ? (
-                      <img src={thumbUrl(room.cover_image, 640)} alt={room.name} draggable={false} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    {roomPool(room).length > 0 ? (
+                      <RotatingCover pool={roomPool(room)} interval={7000} alt={room.name} sizes="(max-width: 640px) 50vw, 25vw" className="absolute inset-0" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">גררי לכאן תמונת חדר</div>
                     )}

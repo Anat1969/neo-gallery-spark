@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import LatestStrip, { type StripWork } from "@/components/LatestStrip";
 import { thumbUrl, uploadImage } from "@/lib/media";
+import RotatingCover from "@/components/media/RotatingCover";
 import { CreateName, CreateTile, ImageWell, imageFrom } from "@/components/create/InlineCreate";
 import { fetchGallery, fetchRootArtworks, galleryKey, rootArtworksKey } from "@/lib/queries";
 import { useDockActions } from "@/contexts/DockContext";
@@ -75,20 +76,13 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
   nameNode: React.ReactNode;
   index: number;
 }) => {
-  const frames = useMemo(() => [gallery.cover_image, ...gallery.previews].filter(Boolean).slice(0, 5), [gallery]);
-  const [frame, setFrame] = useState(0);
+  // The cover rotates through the gallery's own works, so the home page never shows the same faces
+  const pool = useMemo(() => [gallery.cover_image, ...gallery.previews].filter(Boolean), [gallery]);
+  const [pos, setPos] = useState<[number, number]>([0, 0]);
   const [hover, setHover] = useState(false);
   const [dropping, setDropping] = useState<"over" | "saving" | null>(null);
   const [target, setTarget] = useState(false);
 
-  useEffect(() => {
-    if (!hover || frames.length < 2) {
-      setFrame(0);
-      return;
-    }
-    const t = window.setInterval(() => setFrame((f) => (f + 1) % frames.length), 850);
-    return () => window.clearInterval(t);
-  }, [hover, frames.length]);
 
   return (
     <motion.div
@@ -139,26 +133,22 @@ const GalleryCard = ({ gallery, onOpen, onPrefetch, menu, nameNode, index, onCov
               {dropping === "saving" ? "שומרת תמונת כיסוי..." : "שחררי כאן להחלפת הכיסוי"}
             </div>
           )}
-          {frames.length === 0 && <div className="flex h-full items-center justify-center font-mono text-xs text-muted-foreground">אין תמונה</div>}
-          {frames.map((src, i) => (
-            <img
-              key={src + i}
-              src={thumbUrl(src, 640)}
-              srcSet={`${thumbUrl(src, 400)} 400w, ${thumbUrl(src, 640)} 640w, ${thumbUrl(src, 960)} 960w`}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              alt={i === 0 ? gallery.name : ""}
-              draggable={false}
-              loading={index < 4 && i === 0 ? "eager" : "lazy"}
-              decoding="async"
-              className={`absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-700 ${i === frame ? "scale-105 opacity-100" : "scale-100 opacity-0"}`}
-            />
-          ))}
+          <RotatingCover
+            pool={pool}
+            fast={hover}
+            interval={6500}
+            eager={index < 4}
+            alt={gallery.name}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="absolute inset-0"
+            onIndex={(i, n) => setPos([i, n])}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           <span className="absolute left-0 top-0 bg-background/85 px-3 py-1.5 font-mono text-[10px] tracking-[0.12em] text-foreground backdrop-blur">{gallery.category}</span>
-          {frames.length > 1 && (
-            <div className="absolute inset-x-3 bottom-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              {frames.map((_, i) => <span key={i} className={`h-px flex-1 ${i === frame ? "bg-white" : "bg-white/35"}`} />)}
-            </div>
+          {pos[1] > 1 && (
+            <span className="absolute bottom-3 left-3 font-mono text-[10px] tracking-[0.12em] text-white/80 opacity-0 transition-opacity group-hover:opacity-100" style={{ direction: "ltr" }}>
+              {String(pos[0] + 1).padStart(2, "0")} / {String(pos[1]).padStart(2, "0")}
+            </span>
           )}
         </div>
         <div className="flex items-start justify-between gap-2 p-4">
@@ -219,7 +209,7 @@ const GalleryGrid = () => {
       (activity ?? []).forEach((a) => {
         if (!latestByGallery.has(a.gallery_id)) latestByGallery.set(a.gallery_id, a.created_at);
         const list = previews.get(a.gallery_id) ?? [];
-        if (a.image_url && list.length < 4) previews.set(a.gallery_id, [...list, a.image_url]);
+        if (a.image_url && list.length < 16) previews.set(a.gallery_id, [...list, a.image_url]);
       });
 
       const galleries = (data ?? [])
@@ -242,6 +232,19 @@ const GalleryGrid = () => {
   };
 
   // Categories ordered by most recent artwork activity (newest first)
+  // Cover pool of every category: the images of all its galleries
+  const catPools = useMemo(() => {
+    const m = new Map<string, string[]>();
+    const all: string[] = [];
+    galleries.forEach((g) => {
+      const imgs = [g.cover_image, ...g.previews].filter(Boolean);
+      m.set(g.category, [...(m.get(g.category) ?? []), ...imgs]);
+      all.push(...imgs.slice(0, 3));
+    });
+    m.set("הכל", all);
+    return m;
+  }, [galleries]);
+
   // Lists keep the order set by dragging
   const sortedCategories = useMemo(() => [...categories].sort(bySortOrder), [categories]);
 
@@ -482,8 +485,12 @@ const GalleryGrid = () => {
                 onDragOver={(e) => { if (cat !== "הכל" && isItemDrag(e as unknown as React.DragEvent)) { e.preventDefault(); if (chipTarget !== cat) setChipTarget(cat); } }}
                 onDragLeave={() => setChipTarget(null)}
                 onDrop={(e) => dropOnChip(e as unknown as React.DragEvent, cat)}
-                className={`arch-btn h-9 cursor-pointer gap-2 ${chipTarget === cat ? "outline outline-2 outline-offset-4 outline-foreground" : ""}`}
+                className={`arch-btn h-9 cursor-pointer gap-2 ps-1 ${chipTarget === cat ? "outline outline-2 outline-offset-4 outline-foreground" : ""}`}
               >
+                {/* The category's own cover: a small square that rotates through all its galleries */}
+                {(catPools.get(cat)?.length ?? 0) > 0 && (
+                  <RotatingCover pool={catPools.get(cat)!} width={96} interval={5200} className="h-7 w-7 shrink-0" />
+                )}
                 {catObj && isEditMode ? (
                   <InlineEdit
                     value={cat}
