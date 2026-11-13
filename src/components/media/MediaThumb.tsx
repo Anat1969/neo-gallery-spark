@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { displayTitle } from "@/lib/title";
 import { cn } from "@/lib/utils";
 import { MEDIA_LABEL, srcSet, thumbUrl, type MediaType } from "@/lib/media";
 
@@ -99,7 +100,8 @@ const MediaThumb = ({ item, className, sizes = "(max-width: 640px) 100vw, (max-w
         src={thumbUrl(poster, 640)}
         srcSet={srcSet(poster)}
         sizes={sizes}
-        alt={item.title}
+        alt={displayTitle(item.title)}
+        draggable={false}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
         // @ts-expect-error fetchpriority is valid HTML

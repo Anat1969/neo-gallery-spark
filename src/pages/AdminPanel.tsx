@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { displayTitle } from "@/lib/title";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -467,7 +468,7 @@ const AdminPanel = () => {
   };
 
   const saveArtwork = async () => {
-    if (!aForm.title || !aForm.galleryId) {
+    if (!aForm.galleryId) {
       toast({ title: "שגיאה", description: "שם וגלריה הם שדות חובה", variant: "destructive" });
       return;
     }
@@ -747,7 +748,7 @@ const AdminPanel = () => {
                             <div className="h-10 w-10 rounded bg-secondary" />
                           )}
                         </td>
-                        <td className="px-5 py-4 font-semibold text-foreground">{a.title}</td>
+                        <td className="px-5 py-4 font-semibold text-foreground">{displayTitle(a.title) || <span className="font-normal text-muted-foreground">ללא שם</span>}</td>
                         <td className="px-5 py-4 text-foreground">{a.galleryName}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { displayTitle } from "@/lib/title";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -71,7 +72,7 @@ const SearchFilter = () => {
 
       return (data ?? []).map((row: any) => ({
         id: row.id,
-        title: row.title ?? "",
+        title: displayTitle(row.title),
         topic: row.topic ?? "",
         galleryId: row.gallery_id,
         galleryName: row.gallery?.name ?? "",
@@ -364,7 +365,7 @@ const SearchFilter = () => {
                 </span>
               </div>
               <div className="p-4">
-                <h3 className="text-base font-semibold text-foreground">{r.title}</h3>
+                {r.title && <h3 className="text-base font-semibold text-foreground">{r.title}</h3>}
                 <p className="mt-1 text-sm text-muted-foreground">{r.galleryName}</p>
               </div>
             </button>

@@ -24,6 +24,7 @@ export type Database = {
           inspiration_label: string | null
           inspiration_url: string | null
           media_url: string | null
+          source_name: string | null
           media_type: string
           mime: string | null
           file_size: number | null
@@ -48,6 +49,7 @@ export type Database = {
           inspiration_label?: string | null
           inspiration_url?: string | null
           media_url?: string | null
+          source_name?: string | null
           media_type?: string
           mime?: string | null
           file_size?: number | null
@@ -72,6 +74,7 @@ export type Database = {
           inspiration_label?: string | null
           inspiration_url?: string | null
           media_url?: string | null
+          source_name?: string | null
           media_type?: string
           mime?: string | null
           file_size?: number | null

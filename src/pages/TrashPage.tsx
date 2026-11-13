@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { displayTitle } from "@/lib/title";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { thumbUrl } from "@/lib/media";
@@ -58,7 +59,7 @@ const TrashPage = () => {
             >
               {pic ? <img src={thumbUrl(pic, 96)} alt="" className="h-12 w-12 rounded-sm object-cover" loading="lazy" /> : <span className="h-12 w-12 rounded-sm bg-secondary" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate">{d.title || d.name || "ללא שם"}</p>
+                <p className="truncate">{displayTitle(d.title) || d.name || "ללא שם"}</p>
                 <p className="font-mono text-[11px] text-muted-foreground">
                   {KIND[r.table_name] ?? r.table_name} · נמחק {new Date(r.deleted_at).toLocaleString("he-IL")}
                 </p>
