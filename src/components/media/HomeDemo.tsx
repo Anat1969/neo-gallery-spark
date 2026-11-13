@@ -29,7 +29,7 @@ const HomeDemo = () => {
         />
         {!playing && (
           <button type="button" onClick={play} className="group absolute inset-0 flex items-end justify-start bg-gradient-to-t from-black/55 via-transparent to-transparent p-4 text-start">
-            <span className="arch-btn arch-btn-ink">צפייה בסרטון · דקה</span>
+            <span className="arch-btn arch-btn-ink">צפייה בסרטון · 1:15</span>
           </button>
         )}
       </div>
