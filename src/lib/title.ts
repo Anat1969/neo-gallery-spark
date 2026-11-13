@@ -20,6 +20,6 @@ export const displayTitle = (t?: string | null) => {
 /** Title for a fresh upload: a clean name from the file, or nothing when the name is machine-made. */
 export const titleFromFile = (name: string) => {
   const base = name.replace(/\.[^.]+$/, "");
-  if (isFileLikeTitle(name) || isFileLikeTitle(base)) return "";
+  if (isFileLikeTitle(base)) return "";
   return base.replace(/[_-]+/g, " ").trim();
 };
