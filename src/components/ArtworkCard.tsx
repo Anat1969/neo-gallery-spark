@@ -235,7 +235,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                   onClick={handleToggleFavorite}
                   className={`gap-2 border-muted-foreground/40 ${
                     isFavorited ? "border-primary text-primary" : "text-muted-foreground"
-                  } hover:border-primary hover:text-primary`}
+                  }`}
                 >
                   {isFavorited ? "נבחרת" : "לנבחרות"}
                 </Button>
@@ -246,6 +246,7 @@ const ArtworkCard = ({ asModal = false, onClose }: ArtworkCardProps) => {
                   post={artwork.post ?? ""}
                   tags={artwork.tags ?? []}
                   imageUrl={artwork.image_url ?? ""}
+                  mediaUrl={(artwork as any).media_url ?? ""}
                   style={artwork.style ?? ""}
                   concept={artwork.concept ?? ""}
                   year={artwork.year ?? undefined}

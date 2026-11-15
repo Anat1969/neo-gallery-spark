@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { downloadFile, downloadName } from "@/lib/media";
 
 interface ShareExportProps {
   title: string;
@@ -8,6 +9,8 @@ interface ShareExportProps {
   post: string;
   tags: string[];
   imageUrl: string;
+  /** The original file (video, PDF, model...); falls back to imageUrl */
+  mediaUrl?: string;
   style?: string;
   concept?: string;
   year?: number;
@@ -22,6 +25,7 @@ const ShareExport = ({
   post,
   tags,
   imageUrl,
+  mediaUrl,
   style,
   concept,
   year,
@@ -73,6 +77,13 @@ const ShareExport = ({
       toast({ title: "הקישור הועתק ללוח" });
     });
 
+  const fileUrl = mediaUrl || imageUrl;
+  const handleDownload = () =>
+    withLoading("download", async () => {
+      await downloadFile(fileUrl, downloadName(fileUrl, title));
+      toast({ title: "ההורדה התחילה" });
+    });
+
   const handleExport = () =>
     withLoading("export", async () => {
       const data = { title, topic, post, tags, imageUrl, style, concept, year, inspirationUrl, url };
@@ -90,6 +101,7 @@ const ShareExport = ({
     { key: "print", label: "הדפיסי", onClick: handlePrint },
     { key: "email", label: "שלחי", onClick: handleEmail },
     { key: "copy", label: "העתיקי קישור", onClick: handleCopyLink },
+    ...(fileUrl ? [{ key: "download", label: "הורידי", onClick: handleDownload }] : []),
   ];
 
   return (
@@ -102,7 +114,7 @@ const ShareExport = ({
             variant="outline"
             onClick={onClick}
             disabled={loading !== null}
-            className="gap-2 border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"
+            className="gap-2 border-muted-foreground/40 text-muted-foreground"
           >
             {label}
           </Button>
@@ -112,7 +124,7 @@ const ShareExport = ({
             variant="outline"
             onClick={handleExport}
             disabled={loading !== null}
-            className="gap-2 border-muted-foreground/40 text-muted-foreground hover:border-primary hover:text-primary"
+            className="gap-2 border-muted-foreground/40 text-muted-foreground"
           >
             ייצאי נתונים
           </Button>

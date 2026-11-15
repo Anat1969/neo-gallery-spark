@@ -1,5 +1,5 @@
 // Pages from the network (fresh content), images and static assets from the cache.
-const CACHE = 'neo-gallery-v2';
+const CACHE = 'neo-gallery-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -30,7 +30,9 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  const isImage = req.destination === 'image' || url.pathname.includes('/storage/v1/object/public/');
+  // Only what an <img> asks for. fetch() (downloads) and <video> range requests go to the network untouched:
+  // an opaque or partial copy from the cache would break a download or a seek.
+  const isImage = req.destination === 'image';
   const isAsset = url.origin === self.location.origin && (url.pathname.startsWith('/assets/') || /\.(png|svg|webmanifest|woff2?)$/.test(url.pathname));
   if (isImage || isAsset) {
     e.respondWith(
