@@ -169,3 +169,42 @@ export async function uploadMedia(file: File): Promise<UploadedMedia> {
 
 /** Upload a single image (covers) and return its public URL. */
 export const uploadImage = (file: File, folder = "covers") => putFile(file, file.name, folder);
+
+/** A file name for saving: the work's title (or a fallback) plus the original file's extension. */
+export function downloadName(fileUrl: string, title: string): string {
+  const path = (() => { try { return new URL(fileUrl).pathname; } catch { return fileUrl; } })();
+  const ext = (path.match(/\.([a-z0-9]{2,5})$/i)?.[1] || "jpg").toLowerCase();
+  const base = (title || "ענת-שטיבלמן").replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "-").slice(0, 80) || "ענת-שטיבלמן";
+  return `${base}.${ext}`;
+}
+
+/**
+ * Saves the original file (image, video, PDF or any other format) to the visitor's device.
+ * The file is fetched into a same-origin blob, so the browser keeps the Hebrew name
+ * (servers' Hebrew Content-Disposition is replaced by "download" in Chromium).
+ * If fetching fails, Supabase is asked for the file as an attachment with a Latin name.
+ */
+export async function downloadFile(fileUrl: string, name: string): Promise<void> {
+  const save = (href: string, fileName?: string) => {
+    const a = document.createElement("a");
+    a.href = href;
+    if (fileName) a.download = fileName;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+  try {
+    const res = await fetch(fileUrl, { mode: "cors" });
+    if (!res.ok) throw new Error(`download ${res.status}`);
+    const href = URL.createObjectURL(await res.blob());
+    save(href, name);
+    setTimeout(() => URL.revokeObjectURL(href), 60_000);
+  } catch (e) {
+    if (!fileUrl.includes("/storage/v1/object/public/")) throw e;
+    const u = new URL(fileUrl);
+    const ext = name.split(".").pop() || "jpg";
+    u.searchParams.set("download", `anat-shtibelman-${Date.now().toString(36)}.${ext}`);
+    save(u.toString());
+  }
+}
